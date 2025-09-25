@@ -1,0 +1,45 @@
+# 1) Ensure Docker SDK (root)
+- name: Ensure Docker SDK for Python is present (APT)
+  become: true
+  ansible.builtin.apt:
+    name: python3-docker
+    state: present
+    update_cache: true
+
+# 2) Define networks (or keep yours in group_vars)
+- name: Define Tresor networks
+  ansible.builtin.set_fact:
+    tresor_networks:
+      - { name: public_net,   internal: false, subnet: "192.0.2.42/24", gateway: "192.0.2.42" }
+      - { name: internal_net, internal: true,  subnet: "192.0.2.42/24", gateway: "192.0.2.42" }
+      - { name: mc_net,       internal: true,  subnet: "192.0.2.42/24", gateway: "192.0.2.42" }
+
+# 3) Build payload (no custom filters)
+- name: Init networks payload
+  ansible.builtin.set_fact:
+    net_payload: []
+
+- name: Compose networks payload (safe Jinja)
+  ansible.builtin.set_fact:
+    net_payload: "{{ net_payload + [ {
+        'name': item.name,
+        'internal': item.internal | default(false),
+        'ipam_config': ( [{'subnet': item.subnet, 'gateway': item.gateway}]
+                         if (item.subnet is defined and item.gateway is defined) else omit )
+      } ] }}"
+  loop: "{{ tresor_networks }}"
+
+# 4) Create networks via the *system* Docker daemon
+- name: Ensure Docker networks exist (rootful system daemon)
+  become: true
+  community.docker.docker_network:
+    name: "{{ item.name }}"
+    driver: bridge
+    internal: "{{ item.internal | default(false) }}"
+    ipam_config: "{{ item.ipam_config | default(omit) }}"
+    state: present
+    # docker_host omitted to use /var/run/docker.sock by default.
+    # If you prefer to be explicit, uncomment:
+    # docker_host: "unix:///var/run/docker.sock"
+  loop: "{{ net_payload }}"
+

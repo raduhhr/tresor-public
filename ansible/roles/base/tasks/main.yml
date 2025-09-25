@@ -1,0 +1,295 @@
+---
+# Keep cache fresh
+- name: Ensure APT cache is up to date
+  ansible.builtin.apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: [base, base:apt]
+
+# Sudo I/O logging
+- name: Ensure sudo I/O log directory exists
+  ansible.builtin.file:
+    path: /var/log/sudo-io
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  tags: [base, base:sudo, base:logging]
+
+- name: Install sudoers drop-in for ansible with I/O logging
+  ansible.builtin.template:
+    src: sudoers_ansible.j2
+    dest: /etc/sudoers.d/99-ansible
+    owner: root
+    group: root
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  tags: [base, base:sudo, base:logging]
+
+- name: Logrotate for sudo logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/sudo-ansible
+    mode: '0644'
+    content: |
+      /var/log/sudo-ansible.log {
+          weekly
+          rotate 8
+          compress
+          delaycompress
+          dateext
+          missingok
+          notifempty
+          su root root
+          create 0640 root root
+      }
+      /var/log/sudo-io/* {
+          weekly
+          rotate 4
+          compress
+          delaycompress
+          dateext
+          missingok
+          notifempty
+          su root root
+      }
+  tags: [base, base:logging]
+
+# Base packages
+- name: Install essential base packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - gnupg
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+      - systemd-timesyncd
+      - zram-tools
+      - python3-pip
+    state: present
+  tags: [base, base:apt]
+
+# Timezone & locale
+- name: Set timezone
+  community.general.timezone:
+    name: "{{ base_timezone | default('Europe/Bucharest') }}"
+  tags: [base, base:locale]
+
+- name: Ensure locale is present
+  community.general.locale_gen:
+    name: "{{ base_locale | default('en_US.UTF-8') }}"
+    state: present
+  tags: [base, base:locale]
+
+# Timesync (timesyncd)
+- name: Configure timesyncd primary NTP
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/timesyncd.conf
+    regexp: '^#?NTP='
+    line: "NTP={{ base_ntp_servers | default('0.ro.pool.ntp.org 1.ro.pool.ntp.org 2.pool.ntp.org') }}"
+    create: true
+  notify: Restart timesyncd
+  tags: [base, base:ntp]
+
+- name: Configure timesyncd fallback NTP
+  ansible.builtin.lineinfile:
+    path: /etc/systemd/timesyncd.conf
+    regexp: '^#?FallbackNTP='
+    line: 'FallbackNTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org'
+  notify: Restart timesyncd
+  tags: [base, base:ntp]
+
+- name: Enable & start time sync service
+  ansible.builtin.service:
+    name: systemd-timesyncd
+    enabled: yes
+    state: started
+  tags: [base, base:ntp]
+
+# SSH hardening
+- name: Ensure sshd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/ssh/sshd_config.d
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [base, base:ssh]
+
+- name: Write sshd drop-in
+  ansible.builtin.template:
+    src: sshd_99-tresor.conf.j2
+    dest: /etc/ssh/sshd_config.d/99-tresor.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload sshd
+  tags: [base, base:ssh]
+
+# UFW
+- name: Set default policy to deny (incoming)
+  community.general.ufw:
+    policy: deny
+    direction: incoming
+  tags: [base, base:ufw]
+
+- name: Allow SSH from trusted CIDRs
+  community.general.ufw:
+    rule: allow
+    port: "{{ ssh_port | default(22) }}"
+    proto: tcp
+    src: "{{ item }}"
+  loop: "{{ ssh_allow_cidrs | default(['192.0.2.42/16','192.0.2.42/8','192.0.2.42/12']) }}"
+  tags: [base, base:ufw]
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  notify: Reload UFW
+  tags: [base, base:ufw]
+
+- name: Ensure UFW logging level (low)
+  community.general.ufw:
+    logging: low
+  notify: Reload UFW
+  tags: [base, base:ufw]
+
+# Fail2Ban
+- name: Deploy fail2ban jail.local
+  ansible.builtin.template:
+    src: fail2ban_jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart fail2ban
+  tags: [base, base:fail2ban]
+
+- name: Ensure fail2ban enabled and started
+  ansible.builtin.service:
+    name: fail2ban
+    enabled: yes
+    state: started
+  tags: [base, base:fail2ban]
+
+# Unattended upgrades
+- name: Configure unattended-upgrades
+  ansible.builtin.template:
+    src: 50-unattended-upgrades.j2
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [base, base:updates]
+
+- name: Ensure periodic apt config
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [base, base:updates]
+
+# zram
+- name: Configure zram (25% of RAM)
+  ansible.builtin.copy:
+    dest: /etc/default/zramswap
+    content: |
+      ALGO=lz4
+      PERCENT=25
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Restart zramswap
+  tags: [base, base:zram]
+
+- name: Enable zramswap at boot
+  ansible.builtin.service:
+    name: zramswap
+    enabled: yes
+  tags: [base, base:zram]
+
+# journald
+- name: Ensure persistent journal directory exists
+  ansible.builtin.file:
+    path: /var/log/journal
+    state: directory
+    owner: root
+    group: systemd-journal
+    mode: '2755'
+  notify: Restart journald
+  tags: [base, base:journald]
+
+- name: Force persistent journald storage
+  ansible.builtin.ini_file:
+    path: /etc/systemd/journald.conf
+    section: Journal
+    option: Storage
+    value: persistent
+  notify: Restart journald
+  tags: [base, base:journald]
+
+- name: Limit persistent journald to 200M
+  ansible.builtin.ini_file:
+    path: /etc/systemd/journald.conf
+    section: Journal
+    option: SystemMaxUse
+    value: 200M
+  notify: Restart journald
+  tags: [base, base:journald]
+
+# sysctl
+- name: Install basic sysctl hardening
+  ansible.builtin.template:
+    src: 99-tresor.conf.sysctl.j2
+    dest: /etc/sysctl.d/99-tresor.conf
+    owner: root
+    group: root
+    mode: '0644'
+  notify: Reload sysctl
+  tags: [base, base:sysctl]
+
+# minimal groups & dirs
+- name: Ensure base groups exist
+  ansible.builtin.group:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ base_groups | default([]) }}"
+  tags: [base, base:users, base:filesystem]
+
+- name: Prepare base_dirs_effective
+  ansible.builtin.set_fact:
+    base_dirs_effective: "{{ base_dirs | default([]) }}"
+  tags: [base, base:filesystem]
+
+- name: Ensure common directories exist
+  ansible.builtin.file:
+    path: "{{ item.path if item is mapping else item }}"
+    state: directory
+    owner: "{{ (item.owner if item is mapping else 'root') | default('root') }}"
+    group: "{{ (item.group if item is mapping else 'root') | default('root') }}"
+    mode: "{{ (item.mode  if item is mapping else '0755') | default('0755') }}"
+  loop: "{{ base_dirs_effective }}"
+  loop_control:
+    label: "{{ item.path if item is mapping else item }}"
+  tags: [base, base:filesystem]
+
+# MOTD
+- name: Set host MOTD
+  ansible.builtin.copy:
+    src: motd.tresor
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: '0644'
+  tags: [base, base:motd]
+
+# Ensure all handlers run before any external verify playbook
+- name: Flush handlers before external verification
+  ansible.builtin.meta: flush_handlers
+  tags: [base]
+

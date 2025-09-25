@@ -1,0 +1,73 @@
+---
+# roles/docker/tasks/verify.yml
+
+- name: "Try to show remap user (dockremap, if present)"
+  ansible.builtin.command: getent passwd dockremap
+  register: remap_user
+  changed_when: false
+  failed_when: false
+
+- name: "Read /etc/subuid (if present)"
+  ansible.builtin.command: cat /etc/subuid
+  register: subuid
+  changed_when: false
+  failed_when: false
+
+- name: "Read /etc/subgid (if present)"
+  ansible.builtin.command: cat /etc/subgid
+  register: subgid
+  changed_when: false
+  failed_when: false
+
+- name: "docker version"
+  ansible.builtin.command: docker version --format '{{ "{{.Server.Version}}" }}'
+  register: docker_ver
+  changed_when: false
+
+- name: "docker info (data-root, userns)"
+  ansible.builtin.command: docker info --format 'DataRoot={{ "{{.DockerRootDir}}" }}, UserNS={{ "{{.SecurityOptions}}" }}'
+  register: docker_info
+  changed_when: false
+
+- name: "Derive userns base from DataRoot (best-effort)"
+  ansible.builtin.set_fact:
+    userns_base: "{{ docker_info.stdout | regex_search('([0-9]+)\\.([0-9]+)$') | default('', true) }}"
+  changed_when: false
+
+- name: "Show example UID mappings using base"
+  ansible.builtin.debug:
+    msg:
+      - "UserNS base (best-effort): {{ userns_base }}"
+      - "Example mapping:"
+      - "  container UID 0    -> host UID {{ (userns_base.split('.')[0] | int) + 0 if userns_base|length>0 else 'n/a' }}"
+      - "  container UID 1000 -> host UID {{ (userns_base.split('.')[0] | int) + 1000 if userns_base|length>0 else 'n/a' }}"
+
+- name: "Show mapping/version/info"
+  ansible.builtin.debug:
+    msg:
+      - "Remap user (if any): {{ remap_user.stdout | default('') }}"
+      - "SubUID:\n{{ subuid.stdout | default('') }}"
+      - "SubGID:\n{{ subgid.stdout | default('') }}"
+      - "Docker version: {{ docker_ver.stdout }}"
+      - "Info: {{ docker_info.stdout }}"
+
+# Smoke test (non-fatal)
+- name: "Smoke: list containers (daemon reachable)"
+  ansible.builtin.command: docker ps --format '{{ "{{.ID}}" }}'
+  register: docker_ps
+  changed_when: false
+  failed_when: docker_ps.rc != 0
+
+- name: "Show smoke result"
+  ansible.builtin.debug:
+    msg: "docker ps ok ({{ docker_ps.stdout | length }} bytes)"
+
+- name: Summarize docker sanity
+  ansible.builtin.debug:
+    msg:
+      version: "{{ docker_ver.stdout }}"
+      data_root: "{{ (docker_info.stdout | regex_search('DataRoot=([^,]+)', '\\1')) | default('n/a') }}"
+      userns: "{{ (docker_info.stdout | regex_search('UserNS=\\[(.*)\\]', '\\1')) | default('n/a') }}"
+
+
+

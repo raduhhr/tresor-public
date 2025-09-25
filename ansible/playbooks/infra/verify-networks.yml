@@ -1,0 +1,20 @@
+---
+- name: Verify Docker networks
+  hosts: all
+  become: true
+  tasks:
+    - name: List networks
+      community.docker.docker_network_info:
+        name: "{{ item.name }}"
+      loop: "{{ docker_networks }}"
+      register: netinfo
+
+    - name: Assert network exists and matches IPAM
+      ansible.builtin.assert:
+        that:
+          - item.exists | default(false)
+          - (item.network.IPAM.Config[0].Subnet | default('')) == (item.item.subnet)
+        quiet: true
+      loop: "{{ netinfo.results }}"
+      loop_control:
+        label: "{{ item.item.name }}"

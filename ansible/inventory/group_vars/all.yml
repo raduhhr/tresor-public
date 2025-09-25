@@ -1,0 +1,39 @@
+# role inputs only (no connection vars)
+base_timezone: Europe/Bucharest
+base_locale: en_US.UTF-8
+
+ssh_port: 22
+ssh_allow_users: [ansible, radu]
+ssh_allow_cidrs:
+  - 192.0.2.42/16
+  - 192.0.2.42/12
+  - 192.0.2.42/8
+
+base_ntp_servers: "0.ro.pool.ntp.org 1.ro.pool.ntp.org 2.pool.ntp.org"
+
+base_groups: [mediausers, containers_rw]
+base_dirs:
+  - { path: "/mnt/ssd", owner: root, group: root, mode: "0755" }
+  - { path: "/mnt/hdd/data", owner: root, group: root, mode: "0755" }
+
+docker_hold: true
+docker_pkg_version: ""
+
+
+docker_networks:
+  - name: public_net
+    internal: false
+    subnet: "192.0.2.42/24"
+    gateway: "192.0.2.42"
+
+  - name: internal_net
+    internal: true
+    subnet: "192.0.2.42/24"
+    gateway: "192.0.2.42"
+
+  - name: mc_net
+    internal: true
+    subnet: "192.0.2.42/24"
+    gateway: "192.0.2.42"
+
+docker_host_rootless: "unix:///run/user/{{ (ansible_env.SUDO_UID | default(ansible_user_uid)) }}/docker.sock"

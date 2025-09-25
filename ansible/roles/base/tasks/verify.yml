@@ -1,0 +1,58 @@
+---
+# UFW status
+- name: Show UFW status (verbose)
+  ansible.builtin.command: ufw status verbose
+  register: ufw_out
+  changed_when: false
+  tags: [base, base:verify]
+
+# Fail2Ban status
+- name: Show Fail2Ban sshd jail
+  ansible.builtin.command: fail2ban-client status sshd
+  register: f2b_out
+  changed_when: false
+  failed_when: false
+  tags: [base, base:verify]
+
+# Time sync status
+- name: Show time sync status
+  ansible.builtin.command: timedatectl status
+  register: time_out
+  changed_when: false
+  tags: [base, base:verify]
+
+# Journald disk usage (helps confirm persistence/limits)
+- name: Show journald disk usage
+  ansible.builtin.command: journalctl --disk-usage
+  register: jrn_out
+  changed_when: false
+  tags: [base, base:verify]
+
+# SSH effective config snapshot (sanity)
+- name: Show sshd effective config (subset)
+  ansible.builtin.command: sshd -T
+  register: sshd_out
+  changed_when: false
+  failed_when: false
+  tags: [base, base:verify]
+
+# Sysctl check for a few hardened keys (optional: adjust to your template)
+- name: Show selected sysctl values
+  ansible.builtin.command: sysctl -n net.ipv4.ip_forward net.ipv4.conf.all.rp_filter net.ipv4.tcp_syncookies
+  register: sysctl_out
+  changed_when: false
+  failed_when: false
+  tags: [base, base:verify]
+
+# Output
+- name: Dump base verify outputs
+  ansible.builtin.debug:
+    msg:
+      - "UFW:\n{{ ufw_out.stdout | default('n/a') }}"
+      - "Fail2Ban:\n{{ f2b_out.stdout | default('n/a') }}"
+      - "Time sync:\n{{ time_out.stdout | default('n/a') }}"
+      - "Journald:\n{{ jrn_out.stdout | default('n/a') }}"
+      - "sshd -T (subset):\n{{ (sshd_out.stdout_lines | default([]))[:30] | join('\n') }}"
+      - "sysctl sample:\n{{ sysctl_out.stdout | default('n/a') }}"
+  tags: [base, base:verify]
+

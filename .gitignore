@@ -1,0 +1,16 @@
+*.key *.pem *.pfx *.crt
+.env
+secrets*.yml
+vault*.yml
+*.age
+.sops.yaml
+*dump*.txt
+*dump*.sh
+*.log
+*.journal
+.DS_Store
+.vscode/
+.idea/
+__pycache__/
+*.qcow2
+*.iso
