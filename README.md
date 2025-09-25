@@ -1,6 +1,6 @@
 ---
 
-# Tresor — Self-Hosted, Modular, Secure Homelab (Public Snapshot)
+#Tresor — Self-Hosted, Modular, Secure Homelab (Public Snapshot)
 
 **Tresor** is a fully self-hosted homelab built for security, reproducibility, and low manual maintenance.
 This repo is the **public, sanitized snapshot** of the project: docs, Ansible skeleton, and deployment patterns (no secrets).
