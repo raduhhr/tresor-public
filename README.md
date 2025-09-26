@@ -24,14 +24,16 @@ This repo is the **public, sanitized snapshot** of the project: docs, Ansible sk
                              │
                     ┌────────┴────────┐
                     │                 │
-               public_net         internal_net
-            (exposed via CF)     (LAN-only access)
-           ─────────────────     ─────────────────
-           • Landing site        • Jellyfin
-           • MC Frontend         • Grafana + Prometheus
-           • Status page         • Portainer
-                                 • File services
-
+        |------- public_net         internal_net
+        |     (exposed via CF)     (LAN-only access)
+        |   ─────────────────     ─────────────────
+        |   • Landing site        • Jellyfin
+        |   • MC Frontend         • Grafana + Prometheus
+        |   • Status page         • Portainer
+        |                         • File services
+        |
+Velocity Proxy------------------|
+─────────────────               |                             
                           mc_net (isolated)
                           ─────────────────
                           • Minecraft Server
