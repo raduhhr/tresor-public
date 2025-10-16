@@ -34,7 +34,7 @@ This repo is the **public, sanitized snapshot** of the project: docs, Ansible sk
         |
 Velocity Proxy------------------|
 ─────────────────               |                             
-• Hetzner CX22              mc_net (isolated)
+• Hetzner CX22 VPS          mc_net (isolated)
 • Wireguard, UFW,          ─────────────────
                            • Minecraft Server
 ```
