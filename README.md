@@ -22,8 +22,8 @@ This repo is the **public, sanitized snapshot** of the project: docs, Ansible sk
                              │
                          Traefik
                              │
-                    ┌────────┴────────┐
-                    │                 │
+                    ┌────────┴
+                    │                 
         |------- public_net         internal_net
         |     (exposed via CF)     (LAN-only access)
         |   ─────────────────     ─────────────────
@@ -153,7 +153,7 @@ ansible-playbook -i inventory/hosts.ini playbooks/infra/setup-base.yml --check
 ansible-playbook -i inventory/hosts.ini playbooks/infra/setup-base.yml
 ```
 
-5. **Install Docker (rootless) and networks**:
+5. **Install Docker and networks**:
 
 ```bash
 ansible-playbook -i inventory/hosts.ini playbooks/infra/setup-docker.yml
