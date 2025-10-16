@@ -16,15 +16,15 @@ This repo is the **public, sanitized snapshot** of the project: docs, Ansible sk
 ## Architecture (high-level)
 
 ```
-                          Internet
-                             │
-                   Cloudflare Tunnel
-                             │
-                         Traefik
-                             │
-                    ┌────────┴
-                    │                 
-        |------- public_net         internal_net
+        _____________________Internet
+        |                     │
+        |           Cloudflare Tunnel
+        |                     │
+        |                 Traefik
+        |                     │
+        |            ┌────────┴
+        |            │                 
+        |       public_net         internal_net
         |     (exposed via CF)     (LAN-only access)
         |   ─────────────────     ─────────────────
         |   • Landing site        • Jellyfin
@@ -34,9 +34,9 @@ This repo is the **public, sanitized snapshot** of the project: docs, Ansible sk
         |
 Velocity Proxy------------------|
 ─────────────────               |                             
-                          mc_net (isolated)
-                          ─────────────────
-                          • Minecraft Server
+• Hetzner CX22              mc_net (isolated)
+• Wireguard, UFW,          ─────────────────
+                           • Minecraft Server
 ```
 
 * **No public ports** opened on the router; public services go through **Cloudflare Tunnel** → **Traefik**.
