@@ -7,7 +7,7 @@ This repo is the **public, sanitized snapshot** of the project: docs, Ansible sk
 > **Highlights**
 >
 > * Everything as Code via Ansible (idempotent roles + playbooks)
-> * Rootless Docker, UFW, Fail2Ban, Traefik, Cloudflare Tunnel
+> * Docker, UFW, Fail2Ban, Traefik, Cloudflare Tunnel
 > * Strict network segmentation: `public_net`, `internal_net`, `mc_net`
 > * Reproducible, modular, and well-documented
 
@@ -41,7 +41,7 @@ Velocity Proxy------------------|
 
 * **No public ports** opened on the router; public services go through **Cloudflare Tunnel** → **Traefik**.
 * **Jellyfin / monitoring / admin UIs** are **LAN-only** on `internal_net`.
-* **Minecraft** runs in its own **isolated** network `mc_net`.
+* **Minecraft** runs in its own **isolated** network `mc_net, port is not open to internet, only to wireguard on vps. 
 
 ---
 
@@ -78,7 +78,7 @@ Velocity Proxy------------------|
 ## Networking Model (summary)
 
 * `public_net`: internet-facing apps behind Traefik + Cloudflare Tunnel.
-* `internal_net`: LAN-only; not attached to Traefik.
+* `internal_net`: LAN-only; not attached to Traefik, East-West comms for my lan services. 
 * `mc_net`: dedicated isolated network for the Minecraft server.
 
 Communication between services is **explicitly defined**, never assumed.
@@ -91,7 +91,6 @@ Communication between services is **explicitly defined**, never assumed.
 * **Traefik**: reverse proxy, rate limiting, middleware.
 * **Turnstile/Auth**: for public UI (e.g., MC frontend).
 * **UFW + Fail2Ban**: default-deny, brute-force protection.
-* **Rootless Docker**: containers run as non-root where possible.
 * **Audit/Verify**: Ansible “verify” plays confirm final state.
 
 ---
@@ -112,13 +111,6 @@ Communication between services is **explicitly defined**, never assumed.
 * Optional migration to K3s
 * External USB HDD backup flow
 * Expand public docs (service-by-service deep dives)
-
----
-
-## Contributing / Using This as a Template
-
-This is a personal project published for reference. Feel free to **fork** and adapt.
-If you open issues/PRs, avoid including real IPs, domains, or secrets.
 
 ---
 
