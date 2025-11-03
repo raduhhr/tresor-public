@@ -1,16 +1,152 @@
-*.key *.pem *.pfx *.crt
-.env
-secrets*.yml
-vault*.yml
+# ===========================
+# 🔐 SECRETS & ENV FILES
+# ===========================
+*.key
+*.pem
+*.pfx
+*.crt
+*.cer
+*.der
+*.pub
+*.enc
 *.age
+*.asc
+*.gpg
+*.kdbx
+*.ovpn
+*.conf.bak
+
+.env
+.env.*
+.envrc
+
+# Ansible vaults & secret configs
+vault*.yml
+vaults/
+secrets*.yml
+secret*.yml
+*.vault
+*.vault.yml
+*.sops.*
 .sops.yaml
+
+# ===========================
+# 🗄️  BACKUPS & DUMPS
+# ===========================
 *dump*.txt
+*dump*.log
 *dump*.sh
-*.log
+*backup*.tar
+*backup*.gz
+*backup*.zip
+*.bak
+*.old
+*.retry
 *.journal
-.DS_Store
+*.log
+*.out
+*.tmp
+*.swp
+*.swx
+*.trace
+*.stacktrace
+
+# ===========================
+# 🐳 DOCKER / CONTAINERS
+# ===========================
+# Docker Compose overrides, runtime files, local volumes
+docker-compose.override.yml
+.docker/
+docker-data/
+docker-volumes/
+docker-logs/
+compose-backup/
+.env.docker
+*.pid
+
+# ===========================
+# ⚙️ ANSIBLE / INFRASTRUCTURE
+# ===========================
+*.retry
+inventory/*.ini
+inventory/*.yaml
+ansible.log
+roles/**/files/private/
+roles/**/templates/private/
+ansible/tmp/
+facts/
+group_vars/vault.yml
+host_vars/vault.yml
+
+# ===========================
+# 🧱 VIRTUAL MACHINES / IMAGES
+# ===========================
+*.qcow2
+*.vdi
+*.vhd
+*.vmdk
+*.img
+*.iso
+
+# ===========================
+# 🧠 PYTHON / SCRIPTS
+# ===========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+venv/
+.venv/
+env/
+ENV/
+Pipfile.lock
+poetry.lock
+
+# ===========================
+# 🧰 BUILD / TEMP / CACHE
+# ===========================
+.cache/
+.tmp/
+temp/
+tmp/
+*.swp
+*.swo
+*.bak
+*.old
+
+# ===========================
+# 💻 EDITORS / IDE
+# ===========================
 .vscode/
 .idea/
-__pycache__/
-*.qcow2
-*.iso
+*.iml
+*.code-workspace
+*.sublime-project
+*.sublime-workspace
+
+# ===========================
+# 🧾 SYSTEM / MISC
+# ===========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+desktop.ini
+.trash/
+lost+found/
+
+# ===========================
+# 📚 DOC / EXPORTS / REPORTS
+# ===========================
+*.pdf
+*.odt
+*.docx
+*.rtf
+*.xlsx
+*.csv
+JoplinExport/
+_exports/
+_resources/
+notes_dump/
+*.zip
+*.7z
