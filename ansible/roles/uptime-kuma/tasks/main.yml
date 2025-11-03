@@ -1,0 +1,41 @@
+---
+# Deploy Uptime Kuma on public_net for mc-status.example.com
+# Root-full Docker version (HTTP-only; TLS handled by Cloudflare)
+
+- Name: <REDACTED>
+ ansible.builtin.file:
+ path: /ssd/configs/uptime-kuma
+ state: directory
+ owner: root
+ group: root
+ mode: '0755'
+
+- Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ image: louislam/uptime-kuma:latest
+ restart_policy: always
+ networks:
+ - Name: <REDACTED>
+ volumes:
+ - /ssd/configs/uptime-kuma:/app/data
+ ports: [] # no host ports — Traefik handles exposure
+ labels:
+ traefik.enable: "true"
+
+ # === Main router ===
+ traefik.http.routers.uptime-kuma.rule: "Host(`mc-status.example.com`)"
+ traefik.http.routers.uptime-kuma.entrypoints: "web"
+ traefik.http.services.uptime-kuma.loadbalancer.server.port: "3001"
+
+ # === Redirect / → /status/local-node ===
+ # Match any scheme + host root and redirect permanently
+ traefik.http.middlewares.kuma-redirect.redirectregex.regex: "^https?://mc-status\\.userhhr\\.xyz/?$"
+ traefik.http.middlewares.kuma-redirect.redirectregex.replacement: "https://mc-status.example.com/status/local-node"
+ traefik.http.middlewares.kuma-redirect.redirectregex.permanent: "true"
+
+ # Attach redirect middleware to router
+ traefik.http.routers.uptime-kuma.middlewares: "kuma-redirect@docker"
+ env:
+ TZ: "Europe/Berlin"
+ state: started

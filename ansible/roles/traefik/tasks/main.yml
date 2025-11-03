@@ -1,0 +1,164 @@
+---
+# tasks file for traefik (rootful Docker)
+
+# 0) Normalize + safe-merge defaults with any inventory overrides
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _traefik_overrides: "{{ traefik if (traefik is mapping) else {} }}"
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ traefik: >-
+ {{
+ {
+ 'image': 'traefik:v3.1',
+ 'tz': 'Europe/Berlin',
+ 'domain': 'example.com',
+ 'config_dir': '/ssd/configs/traefik',
+ 'log_level': 'INFO'
+ }
+ | combine(_traefik_overrides, recursive=True)
+ }}
+
+# Guard: dashboard exposure only off|local (never public)
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - (traefik_dashboard_mode | default('off')) in ['off','local']
+ fail_msg: "Dashboard mode must be 'off' or 'local'."
+
+# 0.1) Build published ports
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _pub_http: >-
+ {{
+ [ traefik.bind_host ~ ":" ~ (traefik.bind_port | string) ~ ":80" ]
+ if (traefik.bind_host is defined and traefik.bind_port is defined)
+ else []
+ }}
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _pub_dash: >-
+ {{
+ [ "192.0.2.10:" ~ (traefik_dashboard_local_port | default(8081) | string)
+ ~ ":" ~ (traefik_dashboard_local_port | default(8081) | string) ]
+ if (traefik_dashboard_mode | default('off')) == 'local'
+ else []
+ }}
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _published_ports: "{{ _pub_http + _pub_dash }}"
+
+# 0.2) Build container labels
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _labels: >-
+ {{
+ dict({'traefik.enable': 'true'})
+ | combine(
+ (
+ {
+ 'traefik.http.routers.dashboard-local.rule': 'PathPrefix(`/`)',
+ 'traefik.http.routers.dashboard-local.entrypoints': 'dash',
+ 'traefik.http.routers.dashboard-local.service': 'api@internal',
+ 'traefik.http.routers.dashboard-local.middlewares': 'chain-secure@file'
+ }
+ ) if (traefik_dashboard_mode | default('off')) == 'local' else {},
+ recursive=True
+ )
+ }}
+
+# 1) Ensure config dirs and files
+- Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ traefik.config_dir }}"
+ state: directory
+ owner: root
+ group: root
+ mode: "0750"
+
+- Name: <REDACTED>
+ ansible.builtin.template:
+ src: "traefik.yml.j2"
+ dest: "{{ traefik.config_dir }}/traefik.yml"
+ owner: root
+ group: root
+ mode: "0640"
+
+- Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ traefik.config_dir }}/dynamic"
+ state: directory
+ owner: root
+ group: root
+ mode: "0750"
+
+- Name: <REDACTED>
+ ansible.builtin.template:
+ src: "middlewares.yml.j2"
+ dest: "{{ traefik.config_dir }}/dynamic/middlewares.yml"
+ owner: root
+ group: root
+ mode: "0640"
+
+# 2) Run container (HTTP only; CF Tunnel terminates TLS)
+- Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ image: "{{ traefik.image }}"
+ restart_policy: always
+ networks:
+ - Name: <REDACTED>
+ env:
+ TZ: "{{ traefik.tz }}"
+ volumes:
+ - "{{ traefik.config_dir }}/traefik.yml:/traefik.yml:ro"
+ - "{{ traefik.config_dir }}/dynamic:/dynamic:ro"
+ - "/etc/localtime:/etc/localtime:ro"
+ - "/var/run/docker.sock:/var/run/docker.sock:ro"
+ command: ["--configFile=/traefik.yml"]
+ published_ports: "{{ _published_ports }}"
+ labels: "{{ _labels }}"
+
+# 3) Verify Traefik is healthy (inline status)
+- Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: _tx
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _tx.exists
+ - _tx.container.State.Running
+ - _tx.container.State.ExitCode == 0
+ fail_msg: "Traefik container is not running cleanly."
+
+# 4) Host binding assertions
+- Name: <REDACTED>
+ when:
+ - (_published_ports | length) > 0
+ - "'80/tcp' in _tx.container.HostConfig.PortBindings"
+ ansible.builtin.assert:
+ that:
+ - _tx.container.HostConfig.PortBindings['80/tcp'][0].HostIp == '192.0.2.10'
+ fail_msg: "Port 80 must be bound to 192.0.2.10 when publishing in local mode."
+
+- Name: <REDACTED>
+ when: (_published_ports | length) == 0
+ ansible.builtin.assert:
+ that:
+ - (_tx.container.HostConfig.PortBindings | default({})) | length == 0
+ success_msg: "No host port publishing (expected for CF Tunnel)."
+ fail_msg: "Unexpected host port bindings detected."
+
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _tx.container.HostConfig.PortBindings['8081/tcp'][0].HostIp == '192.0.2.10'
+ - (_tx.container.HostConfig.PortBindings['8081/tcp'][0].HostPort | int) == (traefik_dashboard_local_port | default(8081) | int)
+ fail_msg: "Dashboard port not bound correctly."
+ when: (traefik_dashboard_mode | default('off')) == 'local'

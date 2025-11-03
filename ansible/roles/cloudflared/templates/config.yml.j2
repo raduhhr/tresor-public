@@ -1,0 +1,13 @@
+tunnel: {{ cloudflared.tunnel_id }}
+credentials-file: {{ cloudflared.config_dir }}/{{ cloudflared.tunnel_id }}.json
+{% if cloudflared.enable_metrics | default(true) %}
+metrics: 192.0.2.10:{{ cloudflared.metrics_port | default(8086) }}
+{% endif %}
+
+ingress:
+{% for rule in cloudflared.ingress %}
+ - {% if rule.hostname is defined %}
+ hostName: <REDACTED>
+ {% endif %}
+ service: {{ rule.service }}
+{% endfor %}

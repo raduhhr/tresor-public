@@ -1,0 +1,33 @@
+prometheus_image: "prom/prometheus:latest"
+prometheus_container_Name: <REDACTED>
+prometheus_config_dir: "/ssd/configs/prometheus"
+prometheus_network: "internal_net"
+
+# Container port
+prometheus_port: 9090
+
+# NEW: LAN exposure toggle + host bind port
+prometheus_expose_host_port: true
+prometheus_host_port: 9090
+
+# NEW: UFW allowlist CIDR for LAN
+prometheus_allow_from_cidr: "192.0.2.10/24"
+
+prometheus_scrape_interval: "15s"
+
+prometheus_targets:
+ - job_Name: <REDACTED>
+ static_configs:
+ - targets: ["prometheus:9090"]
+
+ - job_Name: <REDACTED>
+ static_configs:
+ - targets: ["node-exporter:9100"] # ← fixed (was localhost)
+
+ - job_Name: <REDACTED>
+ static_configs:
+ - targets: ["cadvisor:8080"]
+
+ - job_Name: <REDACTED>
+ static_configs:
+ - targets: ["192.0.2.10:9225"]

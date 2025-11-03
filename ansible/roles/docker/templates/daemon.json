@@ -1,0 +1,17 @@
+{
+ "data-root": "/ssd/containers",
+ "exec-opts": ["native.cgroupdriver=systemd"],
+ "log-driver": "journald",
+ "log-opts": {},
+ "storage-driver": "overlay2",
+ "features": { "buildkit": true },
+ "ipv6": false,
+ "live-restore": true,
+ "default-address-pools": [
+ { "base":"192.0.2.10/16", "size": 24 },
+ { "base":"192.0.2.10/16", "size": 24 }
+ ],
+ "iptables": true,
+ "userland-proxy": true
+}
+

@@ -1,0 +1,16 @@
+---
+- Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: prometheus_info
+
+- Name: <REDACTED>
+ assert:
+ that:
+ - prometheus_info.exists
+ - prometheus_info.container.State.Running
+ fail_msg: "Prometheus container not running!"
+
+- Name: <REDACTED>
+ debug:
+ msg: "Prometheus is accessible on internal_net at http://{{ prometheus_container_name }}:9090"

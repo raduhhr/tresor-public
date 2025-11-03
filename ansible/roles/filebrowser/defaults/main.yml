@@ -1,0 +1,17 @@
+---
+# defaults file for filebrowser
+
+filebrowser_image: "filebrowser/filebrowser:latest"
+
+# networks: only LAN
+filebrowser_network_primary: "internal_net"
+filebrowser_network_publish: "lan_pub"
+
+# listen/bind
+filebrowser_bind_addr: "192.0.2.10" # still binds on host
+filebrowser_listen_port: 8080 # LAN port
+filebrowser_allow_from_cidr: "192.0.2.10/24"
+
+# dirs
+filebrowser_config_dir: "/ssd/configs/filebrowser"
+filebrowser_db_dir: "/ssd/configs/filebrowser/db"

@@ -1,0 +1,157 @@
+---
+# roles/networks/tasks/main.yml
+# Create core Docker bridges for Tresor, now including a dedicated public MC bridge (mc_pub)
+# and a LAN-published bridge (lan_pub). Idempotent; recreates only if IPAM changed.
+
+############################
+# 0) Prerequisites
+############################
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.apt:
+ Name: <REDACTED>
+ state: present
+ update_cache: true
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.apt:
+ name:
+ - iptables
+ - nftables
+ state: present
+ update_cache: true
+ register: _nat_pkgs
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ state: restarted
+ when: _nat_pkgs is changed
+
+############################
+# 1) Define intended networks
+############################
+# Default map (override/extend with group_vars: local-node_networks)
+# - public_net: Traefik/Cloudflared (internet-facing via tunnel, no host ports)
+# - internal_net: East-west LAN-only (Grafana/Prometheus/etc.)
+# - mc_net: Isolated MC backend (Paper only; Velocity also joins for backend reach)
+# - mc_pub: Public MC bridge (Velocity attaches here and publishes 25565 on host)
+# - lan_pub: LAN-published bridge for services reachable only on LAN via host ports
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ local-node_networks_default:
+ - { Name: <REDACTED>
+ - { Name: <REDACTED>
+ - { Name: <REDACTED>
+ - { Name: <REDACTED>
+ - { Name: <REDACTED>
+
+# Use override if provided
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ networks_src: "{{ local-node_networks | default(local-node_networks_default) }}"
+
+############################
+# 2) Build payload
+############################
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ net_payload: []
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _item_payload:
+ Name: <REDACTED>
+ internal: "{{ item.internal | bool }}"
+ # Keep Linux bridge name <= 15 chars (incl. 'br-'); our names fit.
+ bridge_Name: <REDACTED>
+ ipam_config:
+ - subnet: "{{ item.subnet }}"
+ gateway: "{{ item.gateway }}"
+ driver_options:
+ com.docker.network.bridge.Name: <REDACTED>
+ com.docker.network.bridge.enable_ip_masquerade: "true"
+ loop: "{{ networks_src }}"
+ register: _maps
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ net_payload: "{{ net_payload + [it.ansible_facts._item_payload] }}"
+ loop: "{{ _maps.results }}"
+ loop_control:
+ loop_var: it
+
+############################
+# 3) Safety checks
+############################
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - "net_payload | map(attribute='name') | list | length == (net_payload | map(attribute='name') | list | unique | length)"
+ fail_msg: "Duplicate network names found in net_payload."
+
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - "(net_payload | map(attribute='ipam_config') | map('first') | map(attribute='subnet') | list) |
+ length == ((net_payload | map(attribute='ipam_config') | map('first') | map(attribute='subnet') | list) | unique | length)"
+ fail_msg: "Duplicate subnets found across networks."
+
+############################
+# 4) Read existing networks
+############################
+- Name: <REDACTED>
+ community.docker.docker_network_info:
+ Name: <REDACTED>
+ loop: "{{ net_payload }}"
+ register: net_info
+
+############################
+# 5) Recreate networks when IPAM differs (rare)
+############################
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ nets_to_recreate: []
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ nets_to_recreate: "{{ nets_to_recreate + [ item.name ] }}"
+ loop: "{{ net_payload }}"
+ when: >
+ (net_info.results[loop.index0].exists | default(false)) and (
+ (net_info.results[loop.index0].network.IPAM.Config | default([]) | first | default({})).Subnet
+ != (item.ipam_config | default([]) | first | default({})).subnet
+ or
+ (net_info.results[loop.index0].network.IPAM.Config | default([]) | first | default({})).Gateway
+ != (item.ipam_config | default([]) | first | default({})).gateway
+ )
+
+- Name: <REDACTED>
+ when: nets_to_recreate | length > 0
+ community.docker.docker_network:
+ Name: <REDACTED>
+ state: absent
+ loop: "{{ nets_to_recreate }}"
+
+############################
+# 6) Ensure networks exist (idempotent)
+############################
+- Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: "{{ item.internal }}"
+ driver_options: "{{ item.driver_options }}"
+ ipam_config: "{{ item.ipam_config }}"
+ state: present
+ loop: "{{ net_payload }}"
+
+############################
+# 7) Show final plan (debug)
+############################
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ var: net_payload
+

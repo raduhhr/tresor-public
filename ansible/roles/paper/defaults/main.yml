@@ -1,0 +1,25 @@
+# Container identity
+paper_container: "paper"
+paper_image: "itzg/minecraft-server:java21"
+paper_version: "1.21.9" # pin for predictable first boot
+
+# Paths & ownership override per env if needed
+paper_uid: 1000
+paper_gid: 1000
+
+# Runtime
+paper_memory: "8G"
+paper_tz: "Europe/Berlin"
+
+# Gameplay/security
+paper_online_mode: "false" # cracked allowed
+paper_enforce_whitelist: "true"
+
+# Networking
+mc_net: "mc_net" # internal: true
+paper_egress_net: "mc_pub" # MUST be internal:false (or set to "mc_pub")
+
+# Deploy semantics
+paper_deploy_restart_policy: "no" # deploy keeps it off
+paper_apply_live: false # if true, templates notify restart (only if running)
+

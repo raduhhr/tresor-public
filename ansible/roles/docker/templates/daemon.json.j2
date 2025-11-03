@@ -1,0 +1,16 @@
+{
+ "data-root": "{{ docker_data_root }}",
+ "exec-opts": ["native.cgroupdriver={{ docker_cgroup_driver | default('systemd') }}"],
+ "log-driver": "{{ docker_log_driver | default('journald') }}",
+ "log-opts": {{ (docker_log_opts | default({})) | to_nice_json }},
+ "storage-driver": "overlay2",
+ "features": { "buildkit": true },
+ "ipv6": {{ docker_ipv6 | default(false) | bool | tojson }},
+ "live-restore": {{ docker_live_restore | default(true) | bool | tojson }},
+ "default-address-pools": {{ (docker_default_address_pools
+ | default([{'base':'192.0.2.10/16','size':24},{'base':'192.0.2.10/16','size':24}])) | to_nice_json }},
+ "iptables": true,
+ "userland-proxy": true{% if (docker_userns_remap | default('') | string | length) > 0 %},
+ "userns-remap": "{{ docker_userns_remap }}"{% endif %}
+}
+

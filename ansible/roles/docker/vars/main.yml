@@ -1,0 +1,13 @@
+# Official Docker APT repo for Debian 12 (bookworm)
+docker_apt_repo: "https://download.docker.com/linux/debian"
+docker_apt_distro: "bookworm"
+docker_packages:
+ - docker-ce
+ - docker-ce-cli
+ - containerd.io
+ - docker-buildx-plugin
+ - docker-compose-plugin
+ - python3-docker # for Ansible docker_* modules
+
+
+

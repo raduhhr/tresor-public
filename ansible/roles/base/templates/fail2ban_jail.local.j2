@@ -1,0 +1,31 @@
+# Tresor — Fail2Ban overrides (Debian 12)
+# Keep it minimal; only SSH jail is enabled by default.
+
+[DEFAULT]
+# Ban policy
+bantime = 1h
+findtime = 10m
+maxretry = 5
+
+# Use systemd journal for logs (best on Debian 12)
+backend = systemd
+
+# Ban via UFW (matches your firewall choice)
+banaction = ufw
+banaction_allports = ufw
+
+# Whitelist your own networks
+ignoreip = 192.0.2.10/8 ::1{% if ssh_allow_cidrs is defined %} {{ ssh_allow_cidrs | join(' ') }}{% endif %}
+
+# Optional noise controls (uncomment to tune)
+# destemail = root@localhost
+# sender = fail2ban@{{ ansible_fqdn | default('local-node') }}
+# mta = sendmail
+
+[sshd]
+enabled = true
+port = {{ ssh_port | default(22) }}
+filter = sshd
+# With backend=systemd, logpath is not used, but leaving it is harmless:
+logpath = %(sshd_log)s
+maxretry = 5

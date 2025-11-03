@@ -1,0 +1,5 @@
+---
+# handlers file for roles/jellyfin
+- Name: <REDACTED>
+ ansible.builtin.shell: ufw reload
+ become: true

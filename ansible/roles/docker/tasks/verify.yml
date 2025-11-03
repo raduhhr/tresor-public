@@ -1,0 +1,73 @@
+---
+# roles/docker/tasks/verify.yml
+
+- Name: <REDACTED>
+ ansible.builtin.command: getent passwd dockremap
+ register: remap_user
+ changed_when: false
+ failed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.command: cat /etc/subuid
+ register: subuid
+ changed_when: false
+ failed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.command: cat /etc/subgid
+ register: subgid
+ changed_when: false
+ failed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.command: docker version --format '{{ "{{.Server.Version}}" }}'
+ register: docker_ver
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.command: docker info --format 'DataRoot={{ "{{.DockerRootDir}}" }}, UserNS={{ "{{.SecurityOptions}}" }}'
+ register: docker_info
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ userns_base: "{{ docker_info.stdout | regex_search('([0-9]+)\\.([0-9]+)$') | default('', true) }}"
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ - "UserNS base (best-effort): {{ userns_base }}"
+ - "Example mapping:"
+ - " container UID 0 -> host UID {{ (userns_base.split('.')[0] | int) + 0 if userns_base|length>0 else 'n/a' }}"
+ - " container UID 1000 -> host UID {{ (userns_base.split('.')[0] | int) + 1000 if userns_base|length>0 else 'n/a' }}"
+
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ - "Remap user (if any): {{ remap_user.stdout | default('') }}"
+ - "SubUID:\n{{ subuid.stdout | default('') }}"
+ - "SubGID:\n{{ subgid.stdout | default('') }}"
+ - "Docker version: {{ docker_ver.stdout }}"
+ - "Info: {{ docker_info.stdout }}"
+
+# Smoke test (non-fatal)
+- Name: <REDACTED>
+ ansible.builtin.command: docker ps --format '{{ "{{.ID}}" }}'
+ register: docker_ps
+ changed_when: false
+ failed_when: docker_ps.rc != 0
+
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "docker ps ok ({{ docker_ps.stdout | length }} bytes)"
+
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ version: "{{ docker_ver.stdout }}"
+ data_root: "{{ (docker_info.stdout | regex_search('DataRoot=([^,]+)', '\\1')) | default('n/a') }}"
+ userns: "{{ (docker_info.stdout | regex_search('UserNS=\\[(.*)\\]', '\\1')) | default('n/a') }}"
+
+
+

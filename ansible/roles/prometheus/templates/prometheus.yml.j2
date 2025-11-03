@@ -1,0 +1,26 @@
+# ===========================================
+# Prometheus configuration template
+# Tresor – modular monitoring setup
+# ===========================================
+
+global:
+ scrape_interval: {{ prometheus_scrape_interval | default('15s') }}
+ evaluation_interval: {{ prometheus_scrape_interval | default('15s') }}
+
+scrape_configs:
+{% for job in prometheus_targets %}
+ - job_Name: <REDACTED>
+{% if job.metrics_path is defined %}
+ metrics_path: "{{ job.metrics_path }}"
+{% endif %}
+{% if job.static_configs %}
+ static_configs:
+{% for sc in job.static_configs %}
+ - targets: {{ sc.targets | to_json }}
+{% endfor %}
+{% endif %}
+{% if job.relabel_configs is defined %}
+ relabel_configs:
+{{ job.relabel_configs | to_nice_yaml(indent=6) }}
+{% endif %}
+{% endfor %}

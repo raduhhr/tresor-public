@@ -1,0 +1,366 @@
+---
+# ========================================
+# Tresor — Hardened Base Setup (v2, Oct 2025)
+# Safe with Docker, UFW, and multiple bridges
+# ========================================
+
+# ----------- APT Cache -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.apt:
+ update_cache: yes
+ cache_valid_time: 3600
+ tags: [base, base:apt]
+
+# ----------- Sudo Logging -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.file:
+ path: /var/log/sudo-io
+ state: directory
+ owner: root
+ group: root
+ mode: '0700'
+ tags: [base, base:sudo, base:logging]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.template:
+ src: sudoers_ansible.j2
+ dest: /etc/sudoers.d/99-ansible
+ owner: root
+ group: root
+ mode: '0440'
+ validate: 'visudo -cf %s'
+ tags: [base, base:sudo, base:logging]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.copy:
+ dest: /etc/logrotate.d/sudo-ansible
+ mode: '0644'
+ content: |
+ /var/log/sudo-ansible.log {
+ weekly
+ rotate 8
+ compress
+ delaycompress
+ dateext
+ missingok
+ notifempty
+ su root root
+ create 0640 root root
+ }
+ /var/log/sudo-io/* {
+ weekly
+ rotate 4
+ compress
+ delaycompress
+ dateext
+ missingok
+ notifempty
+ su root root
+ }
+ tags: [base, base:logging]
+
+# ----------- Base Packages -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.apt:
+ name:
+ - ca-certificates
+ - curl
+ - gnupg
+ - ufw
+ - fail2ban
+ - unattended-upgrades
+ - systemd-timesyncd
+ - zram-tools
+ - python3-pip
+ - iptables
+ - iptables-persistent
+ - nftables
+ state: present
+ update_cache: yes
+ tags: [base, base:apt]
+
+# ----------- Locale & Timezone -----------
+- Name: <REDACTED>
+ become: true
+ community.general.timezone:
+ Name: <REDACTED>
+ tags: [base, base:locale]
+
+- Name: <REDACTED>
+ become: true
+ community.general.locale_gen:
+ Name: <REDACTED>
+ state: present
+ tags: [base, base:locale]
+
+# ----------- Time Sync -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.lineinfile:
+ path: /etc/systemd/timesyncd.conf
+ regexp: '^#?NTP='
+ line: "NTP={{ base_ntp_servers | default('0pool.ntp.org 1pool.ntp.org 2.pool.ntp.org') }}"
+ create: true
+ notify: Restart timesyncd
+ tags: [base, base:ntp]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.lineinfile:
+ path: /etc/systemd/timesyncd.conf
+ regexp: '^#?FallbackNTP='
+ line: 'FallbackNTP=0.debian.pool.ntp.org 1.debian.pool.ntp.org'
+ notify: Restart timesyncd
+ tags: [base, base:ntp]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ enabled: yes
+ state: started
+ tags: [base, base:ntp]
+
+# ----------- SSH Hardening -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.file:
+ path: /etc/ssh/sshd_config.d
+ state: directory
+ owner: root
+ group: root
+ mode: '0755'
+ tags: [base, base:ssh]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.template:
+ src: sshd_99-local-node.conf.j2
+ dest: /etc/ssh/sshd_config.d/99-local-node.conf
+ owner: root
+ group: root
+ mode: '0644'
+ notify: Reload sshd
+ tags: [base, base:ssh]
+
+# ----------- Docker-Aware UFW Section -----------
+- Name: <REDACTED>
+ ansible.builtin.command: docker info
+ register: docker_info
+ ignore_errors: true
+ changed_when: false
+ tags: [base, base:ufw]
+
+- Name: <REDACTED>
+ when: docker_info.rc != 0
+ block:
+ - Name: <REDACTED>
+ ansible.builtin.stat:
+ path: /proc/net/if_inet6
+ register: _ipv6
+ changed_when: false
+
+ - Name: <REDACTED>
+ become: true
+ ansible.builtin.lineinfile:
+ path: /etc/default/ufw
+ regexp: '^IPV6='
+ line: "IPV6={{ 'yes' if _ipv6.stat.exists else 'no' }}"
+ create: yes
+ notify: Reload UFW
+
+ - Name: <REDACTED>
+ become: true
+ ansible.builtin.lineinfile:
+ path: /etc/ufw/sysctl.conf
+ regexp: '^#?net\.ipv4\.ip_forward'
+ line: 'net.ipv4.ip_forward=1'
+ create: yes
+ notify: Apply ip_forward now
+
+ - Name: <REDACTED>
+ become: true
+ ansible.builtin.lineinfile:
+ path: /etc/default/ufw
+ regexp: '^DEFAULT_FORWARD_POLICY='
+ line: 'DEFAULT_FORWARD_POLICY="ACCEPT"'
+ notify: Reload UFW
+
+ - Name: <REDACTED>
+ become: true
+ ansible.builtin.command: "ufw allow {{ ssh_port | default(22) }}/tcp"
+ ignore_errors: true
+ changed_when: false
+
+ - Name: <REDACTED>
+ become: true
+ community.general.ufw:
+ state: enabled
+ logging: low
+ notify: Reload UFW
+ tags: [base, base:ufw]
+
+# ----------- Docker Host Firewall Fix -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: >
+ bash -c 'iptables -F DOCKER-USER;
+ iptables -A DOCKER-USER -s 192.0.2.10/16 -j ACCEPT;
+ iptables -A DOCKER-USER -i docker0 -j ACCEPT;
+ iptables -A DOCKER-USER -i br-internal_net -j ACCEPT;
+ iptables -A DOCKER-USER -i br-public_net -j ACCEPT;
+ iptables -A DOCKER-USER -i br-lan_pub -j ACCEPT;
+ iptables -A DOCKER-USER -j RETURN;
+ iptables-save > /etc/iptables/rules.v4'
+ tags: [base, base:ufw, base:dockerfix]
+
+# ----------- Fail2Ban -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.template:
+ src: fail2ban_jail.local.j2
+ dest: /etc/fail2ban/jail.local
+ owner: root
+ group: root
+ mode: '0644'
+ notify: Restart fail2ban
+ tags: [base, base:fail2ban]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ enabled: yes
+ state: started
+ tags: [base, base:fail2ban]
+
+# ----------- Updates, ZRAM, Journald, Sysctl -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.template:
+ src: 50-unattended-upgrades.j2
+ dest: /etc/apt/apt.conf.d/50unattended-upgrades
+ owner: root
+ group: root
+ mode: '0644'
+ tags: [base, base:updates]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.copy:
+ dest: /etc/apt/apt.conf.d/20auto-upgrades
+ content: |
+ APT::Periodic::Update-Package-Lists "1";
+ APT::Periodic::Unattended-Upgrade "1";
+ owner: root
+ group: root
+ mode: '0644'
+ tags: [base, base:updates]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.copy:
+ dest: /etc/default/zramswap
+ content: |
+ ALGO=lz4
+ PERCENT=25
+ owner: root
+ group: root
+ mode: '0644'
+ notify: Restart zramswap
+ tags: [base, base:zram]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ enabled: yes
+ tags: [base, base:zram]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.file:
+ path: /var/log/journal
+ state: directory
+ owner: root
+ group: systemd-journal
+ mode: '2755'
+ notify: Restart journald
+ tags: [base, base:journald]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.ini_file:
+ path: /etc/systemd/journald.conf
+ section: Journal
+ option: Storage
+ value: persistent
+ notify: Restart journald
+ tags: [base, base:journald]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.ini_file:
+ path: /etc/systemd/journald.conf
+ section: Journal
+ option: SystemMaxUse
+ value: 200M
+ notify: Restart journald
+ tags: [base, base:journald]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.template:
+ src: 99-local-node.conf.sysctl.j2
+ dest: /etc/sysctl.d/99-local-node.conf
+ owner: root
+ group: root
+ mode: '0644'
+ notify: Reload sysctl
+ tags: [base, base:sysctl]
+
+# ----------- Filesystem & MOTD -----------
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.group:
+ Name: <REDACTED>
+ state: present
+ loop: "{{ base_groups | default([]) }}"
+ tags: [base, base:users, base:filesystem]
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ base_dirs_effective: "{{ base_dirs | default([]) }}"
+ tags: [base, base:filesystem]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.file:
+ path: "{{ item.path if item is mapping else item }}"
+ state: directory
+ owner: "{{ (item.owner if item is mapping else 'root') | default('root') }}"
+ group: "{{ (item.group if item is mapping else 'root') | default('root') }}"
+ mode: "{{ (item.mode if item is mapping else '0755') | default('0755') }}"
+ loop: "{{ base_dirs_effective }}"
+ loop_control:
+ label: "{{ item.path if item is mapping else item }}"
+ tags: [base, base:filesystem]
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.copy:
+ src: motd.local-node
+ dest: /etc/motd
+ owner: root
+ group: root
+ mode: '0644'
+ tags: [base, base:motd]
+
+- Name: <REDACTED>
+ ansible.builtin.meta: flush_handlers
+ tags: [base]

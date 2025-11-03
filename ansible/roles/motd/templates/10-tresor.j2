@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Dynamic MOTD for Tresor — shown at interactive login
+
+banner() {
+ printf "\n==============================\n"
+ printf " Welcome to Tresor Homelab \n"
+ printf "==============================\n"
+}
+
+kv() { printf "%-8s : %s\n" "$1" "$2"; }
+
+# Date/time & host
+NOW="$(date)"
+HN="$(hostname)"
+
+# CPU model (fallbacks to avoid depending on lscpu)
+if command -v lscpu >/dev/null 2>&1; then
+ CPU="$(lscpu | awk -F: '/Model name/ {gsub(/^ +/, "", $2); print $2; exit}')"
+else
+ CPU="$(awk -F: '/model name/ {gsub(/^ +/, "", $2); print $2; exit}' /proc/cpuinfo)"
+fi
+
+# RAM total (human)
+if command -v free >/dev/null 2>&1; then
+ RAM="$(free -h | awk '/^Mem:/ {print $2}')"
+else
+ RAM="$(awk '/MemTotal/ {printf "%.1fGiB", $2/1024/1024}' /proc/meminfo)"
+fi
+
+# Disk summaries
+root_disk() { df -h / 2>/dev/null | awk 'NR==2 {print $2 " total, " $4 " free"}'; }
+ssd_disk() { df -h /ssd 2>/dev/null | awk 'NR==2 {print $2 " total, " $4 " free"}'; }
+hdd_disk() { df -h /mnt/data 2>/dev/null | awk 'NR==2 {print $2 " total, " $4 " free"}'; }
+hdd_disk_alt(){ df -h /data 2>/dev/null | awk 'NR==2 {print $2 " total, " $4 " free"}'; }
+
+banner
+kv "Host" "$HN"
+kv "Date" "$NOW"
+kv "CPU" "${CPU:-unknown}"
+kv "RAM" "${RAM:-unknown}"
+kv "Disk /" "$(root_disk)"
+
+# Show whichever data mount exists (you’ve used /mnt/data in install docs and /data in structure)
+if mountpoint -q /ssd; then
+ kv "Disk SSD" "$(ssd_disk)"
+fi
+if mountpoint -q /mnt/data; then
+ kv "Disk HDD" "$(hdd_disk)"
+elif mountpoint -q /data; then
+ kv "Disk HDD" "$(hdd_disk_alt)"
+fi
+
+printf "\n"

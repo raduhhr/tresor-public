@@ -1,0 +1,26 @@
+log:
+ level: {{ traefik.log_level | default('INFO') }}
+
+api:
+ dashboard: true
+ insecure: false
+
+accessLog: {}
+
+entryPoints:
+ web:
+ address: ":80"
+{% if traefik_dashboard_mode | default('off') == 'local' %}
+ dash:
+ address: "192.0.2.10:{{ traefik_dashboard_local_port | default(8081) }}"
+{% endif %}
+
+providers:
+ docker:
+ endpoint: "unix:///var/run/docker.sock"
+ exposedByDefault: false
+ network: "public_net"
+ file:
+ directory: "/dynamic"
+ watch: true
+

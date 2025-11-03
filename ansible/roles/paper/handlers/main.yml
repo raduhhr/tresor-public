@@ -1,0 +1,8 @@
+# roles/paper/handlers/main.yml
+- Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ state: started
+ restart: true
+ container_default_behavior: no_defaults
+

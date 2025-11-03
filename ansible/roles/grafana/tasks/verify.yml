@@ -1,0 +1,33 @@
+---
+- Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: _grafana_info
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _grafana_info.exists
+ - _grafana_info.container.State.Running
+ - _grafana_info.container.State.ExitCode == 0
+ fail_msg: "Grafana container is not healthy"
+
+- Name: <REDACTED>
+ ansible.builtin.command: >
+ docker exec {{ grafana_container_name }} 
+ wget -q -O- http://localhost:{{ grafana_port }}/api/health
+ register: _api_health
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _health_json: "{{ _api_health.stdout | from_json }}"
+
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ - "✅ Grafana is healthy!"
+ - "Database: {{ _health_json.database }}"
+ - "Version: {{ _health_json.version }}"
+ - "Access: http://192.0.2.10:3000"

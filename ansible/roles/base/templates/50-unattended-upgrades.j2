@@ -1,0 +1,21 @@
+{% set codename = (ansible_facts.lsb.codename
+ if (ansible_facts.lsb is defined and ansible_facts.lsb.codename is defined)
+ else (ansible_facts.distribution_release | default('bookworm'))) %}
+
+/* Enable security + updates for {{ codename }} */
+Unattended-Upgrade::Origins-Pattern {
+ "origin=Debian,codename={{ codename }}-security,label=Debian-Security";
+ "origin=Debian,codename={{ codename }},label=Debian";
+ "origin=Debian,codename={{ codename }}-updates,label=Debian";
+};
+
+/* Reboot window (tweak in group_vars if you want) */
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "04:30";
+
+/* Housekeeping */
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+/* Optional noise controls */
+Unattended-Upgrade::Mail "";
+Unattended-Upgrade::Verbose "false";

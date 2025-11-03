@@ -1,0 +1,216 @@
+---
+# =====================================================
+# Prometheus + Exporters (Bridge Mode - Fixed)
+# =====================================================
+
+# =====================================================
+# 0️⃣ Precheck: Ensure networks exist
+# =====================================================
+- Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ state: present
+
+- Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ state: present
+
+# =====================================================
+# 1️⃣ Node Exporter – host metrics (bridge mode)
+# =====================================================
+- Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ image: prom/node-exporter:latest
+ pull: true
+ restart_policy: unless-stopped
+ networks:
+ - Name: <REDACTED>
+ # Bind to host so LAN can reach it (optional, Prometheus can reach via internal_net)
+ published_ports:
+ - "9100:9100"
+ # Mount host filesystems as read-only
+ volumes:
+ - /proc:/host/proc:ro
+ - /sys:/host/sys:ro
+ - /:/rootfs:ro
+ command:
+ - "--path.procfs=/host/proc"
+ - "--path.sysfs=/host/sys"
+ - "--path.rootfs=/rootfs"
+ - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+ user: "65534:65534" # nobody user
+ read_only: true
+ state: started
+
+# =====================================================
+# 2️⃣ cAdvisor – container metrics (privileged, bridge)
+# =====================================================
+- Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ image: gcr.io/cadvisor/cadvisor:v0.47.2
+ pull: true
+ restart_policy: unless-stopped
+ privileged: true
+ networks:
+ - Name: <REDACTED>
+ published_ports:
+ - "8080:8080"
+ volumes:
+ - /:/rootfs:ro
+ - /var/run:/var/run:rw
+ - /sys:/sys:ro
+ - /var/lib/docker/:/var/lib/docker:ro
+ - /dev/disk/:/dev/disk:ro
+ command:
+ - "--housekeeping_interval=10s"
+ - "--docker_only=true"
+ devices:
+ - /dev/kmsg:/dev/kmsg
+ state: started
+
+# =====================================================
+# 3️⃣ Prometheus main service (bridge mode)
+# =====================================================
+- Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ prometheus_config_dir }}"
+ state: directory
+ owner: root
+ group: root
+ mode: "0755"
+
+- Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ prometheus_config_dir }}/data"
+ state: directory
+ owner: "65534" # nobody user
+ group: "65534"
+ mode: "0755"
+
+- Name: <REDACTED>
+ ansible.builtin.template:
+ src: prometheus.yml.j2
+ dest: "{{ prometheus_config_dir }}/prometheus.yml"
+ owner: root
+ group: root
+ mode: "0644"
+ register: _prom_config
+ notify: Restart Prometheus
+
+- Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ image: "{{ prometheus_image }}"
+ pull: true
+ restart_policy: unless-stopped
+ networks:
+ - Name: <REDACTED>
+ - Name: <REDACTED>
+ published_ports:
+ - "{{ prometheus_host_port }}:9090"
+ volumes:
+ - "{{ prometheus_config_dir }}/prometheus.yml:/etc/prometheus/prometheus.yml:ro"
+ - "{{ prometheus_config_dir }}/data:/prometheus"
+ command:
+ - "--config.file=/etc/prometheus/prometheus.yml"
+ - "--storage.tsdb.path=/prometheus"
+ - "--storage.tsdb.retention.time=15d"
+ - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+ - "--web.console.templates=/usr/share/prometheus/consoles"
+ - "--web.listen-address=192.0.2.10:9090"
+ - "--web.enable-lifecycle"
+ user: "65534:65534"
+ state: started
+
+# =====================================================
+# 4️⃣ UFW Rules (if available)
+# =====================================================
+- Name: <REDACTED>
+ ansible.builtin.command: which ufw
+ register: _ufw_check
+ changed_when: false
+ failed_when: false
+
+- Name: <REDACTED>
+ community.general.ufw:
+ rule: allow
+ proto: tcp
+ from_ip: "{{ prometheus_allow_from_cidr | default('192.0.2.10/24') }}"
+ to_port: 9100
+ when: _ufw_check.rc == 0
+
+- Name: <REDACTED>
+ community.general.ufw:
+ rule: allow
+ proto: tcp
+ from_ip: "{{ prometheus_allow_from_cidr | default('192.0.2.10/24') }}"
+ to_port: 8080
+ when: _ufw_check.rc == 0
+
+- Name: <REDACTED>
+ community.general.ufw:
+ rule: allow
+ proto: tcp
+ from_ip: "{{ prometheus_allow_from_cidr | default('192.0.2.10/24') }}"
+ to_port: "{{ prometheus_host_port }}"
+ when: _ufw_check.rc == 0
+
+# =====================================================
+# 5️⃣ Docker firewall rules (DOCKER-USER chain)
+# =====================================================
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: >
+ iptables -C DOCKER-USER -s {{ prometheus_allow_from_cidr | default('192.0.2.10/24') }}
+ -p tcp --dport {{ prometheus_host_port }} -j ACCEPT
+ register: _prom_rule_check
+ changed_when: false
+ failed_when: false
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: >
+ iptables -I DOCKER-USER -s {{ prometheus_allow_from_cidr | default('192.0.2.10/24') }}
+ -p tcp --dport {{ prometheus_host_port }} -j ACCEPT
+ when: _prom_rule_check.rc != 0
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.shell: |
+ iptables-save > /etc/iptables/rules.v4
+ changed_when: false
+
+# =====================================================
+# 6️⃣ Verification
+# =====================================================
+- Name: <REDACTED>
+ ansible.builtin.uri:
+ url: "http://192.0.2.10:{{ prometheus_host_port }}/-/ready"
+ status_code: 200
+ register: _prom_ready
+ retries: 15
+ delay: 2
+ until: _prom_ready.status == 200
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _host_ip: "{{ ansible_default_ipv4.address }}"
+
+- Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ - "✅ Prometheus + exporters deployed successfully!"
+ - ""
+ - "Exporters (internal + LAN accessible):"
+ - " • Node Exporter → http://{{ _host_ip }}:9100/metrics"
+ - " • cAdvisor → http://{{ _host_ip }}:8080/metrics"
+ - ""
+ - "Prometheus:"
+ - " • Web UI → http://{{ _host_ip }}:{{ prometheus_host_port }}"
+ - " • Targets → http://{{ _host_ip }}:{{ prometheus_host_port }}/targets"
+ - ""
+ - "Grafana datasource: http://prometheus:9090 (internal_net)"

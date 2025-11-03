@@ -1,0 +1,6 @@
+---
+- Name: <REDACTED>
+ ansible.builtin.service:
+ Name: <REDACTED>
+ state: restarted
+

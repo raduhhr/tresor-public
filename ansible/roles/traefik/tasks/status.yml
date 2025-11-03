@@ -1,0 +1,29 @@
+---
+# Generic container status checks
+
+- Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: _ci
+ changed_when: false
+
+- Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _ci.exists
+ - _ci.container.State.Running
+ - _ci.container.State.ExitCode == 0
+ fail_msg: "Container {{ status_container }} is not healthy."
+
+- Name: <REDACTED>
+ vars:
+ bindings: "{{ _ci.container.HostConfig.PortBindings }}"
+ assert:
+ that:
+ - "'80/tcp' in bindings"
+ - bindings['80/tcp'][0].HostIp == '192.0.2.10'
+ - bindings['80/tcp'][0].HostPort | int == (traefik.bind_port | default(8080) | int)
+ - "'8081/tcp' in bindings"
+ - bindings['8081/tcp'][0].HostIp == '192.0.2.10'
+ - bindings['8081/tcp'][0].HostPort | int == (traefik_dashboard_local_port | default(8081) | int)
+ when: (traefik_dashboard_mode | default('off')) == 'local'

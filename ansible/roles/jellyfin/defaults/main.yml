@@ -1,0 +1,31 @@
+# roles/jellyfin/defaults/main.yml
+
+# ---- Image ----
+jellyfin_image_tag: "latest"
+
+# ---- Networking / exposure ----
+jellyfin_network: "internal_net" # docker network name
+jellyfin_bind_addr: "192.0.2.10" # bind on host
+jellyfin_listen_port: 8096 # host port -> container 8096
+
+# ---- Paths ----
+jellyfin_config_dir: "/ssd/configs/jellyfin"
+
+# Set your media roots in group_vars/host_vars (leave empty here so you decide)
+jellyfin_media_dirs: [] # e.g. ['/mnt/data/media']
+jellyfin_photos_jpg_dir: "" # optional, e.g. '/mnt/data/photos/jpg'
+
+# Create media dirs if missing (convenience for QA/dev)
+jellyfin_create_media_dirs: true
+
+# ---- Container user/group (rootful by default) ----
+jellyfin_uid: 0 # run as root inside container (simple for VAAPI)
+jellyfin_gid: 0
+
+# ---- VAAPI (GPU video accel) ----
+jellyfin_enable_vaapi: true
+jellyfin_vaapi_device: "/dev/dri" # passes /dev/dri into container
+
+# ---- Firewall (LAN-only exposure) ----
+jellyfin_allow_from_cidr: "192.0.2.10/24"
+

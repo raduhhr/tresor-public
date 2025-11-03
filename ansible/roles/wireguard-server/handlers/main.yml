@@ -1,0 +1,11 @@
+---
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.systemd:
+ Name: <REDACTED>
+ state: restarted
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: ufw reload
+ changed_when: true

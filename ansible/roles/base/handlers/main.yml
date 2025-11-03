@@ -1,0 +1,42 @@
+---
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ state: restarted
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ state: reloaded
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: sysctl -w net.ipv4.ip_forward=1
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: ufw reload
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ state: restarted
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.service:
+ Name: <REDACTED>
+ state: restarted
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.systemd:
+ Name: <REDACTED>
+ state: restarted
+
+- Name: <REDACTED>
+ become: true
+ ansible.builtin.command: sysctl --system
