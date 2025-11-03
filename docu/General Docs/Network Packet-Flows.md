@@ -79,17 +79,16 @@ Point-to-point encrypted tunnel between edge node and home node.
 ## Example Packet Flows
 
 ### Game Connection Flow
+
 ```
-
-Client (Internet)
-↓ TCP connection to public port
-Edge Node — Proxy Service
-↓ WireGuard tunnel (UDP)
-↓ 10.8.0.1 → 10.8.0.2
-Home Node — Backend Container
-↓ bound to 10.8.0.2:<port>
-↓ firewall chain: ACCEPT 10.8.0.1 → DROP others
-
+Player (Internet)
+    ↓ TCP 25565
+VPS (tresor-vps) — Velocity Proxy
+    ↓ WireGuard tunnel (UDP 51820)
+    ↓ 10.66.66.1 → 10.66.66.2
+Tresor — Paper Server (Docker container on mc_net)
+    ↓ bound to 10.66.66.2:25565
+    ↓ DOCKER-USER chain: ACCEPT 10.66.66.1 → DROP others
 ```
 
 **Security layers**
@@ -103,16 +102,15 @@ Home Node — Backend Container
 
 ### Web Service Flow
 ```
-
 Internet
-↓ HTTPS (443)
-Cloudflare-style Edge
-↓ Secure Tunnel → Home Node (no open ports)
-Tunnel Client Container (public_net)
-↓ HTTP (80)
-Reverse Proxy (public_net)
-↓ hostname routing
-Service Container (public_net or internal_net)
+    ↓ HTTPS (443)
+Cloudflare Edge
+    ↓ Cloudflare Tunnel → Tresor (no open ports)
+Cloudflared container (public_net)
+    ↓ HTTP (80)
+Traefik (public_net)
+    ↓ hostname routing
+Service container (public_net or internal_net)
 
 ```
 
