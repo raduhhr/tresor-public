@@ -1,7 +1,0 @@
----
-- name: Create core Docker networks
-  hosts: all
-  become: true
-  roles:
-    - networks
-

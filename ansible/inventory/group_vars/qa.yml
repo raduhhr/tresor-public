@@ -1,4 +1,0 @@
-ssh_allow_cidrs:
-  - 192.0.2.42/24   # libvirt NAT
-  - 192.0.2.42/16
-

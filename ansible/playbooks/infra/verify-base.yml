@@ -1,9 +1,0 @@
----
-- name: Verify base setup
-  hosts: all
-  become: true
-  gather_facts: false
-
-  tasks:
-    - import_tasks: "../../roles/base/tasks/verify.yml"
-      tags: [base, base:verify]

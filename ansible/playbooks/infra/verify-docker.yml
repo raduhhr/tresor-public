@@ -1,9 +1,0 @@
----
-- name: Verify Docker configuration (version, data-root, userns)
-  hosts: all
-  become: true
-  gather_facts: false
-
-  tasks:
-    - import_tasks: "../../roles/docker/tasks/verify.yml"
-      tags: [docker, docker:verify]
