@@ -1,5 +1,5 @@
 # ===========================
-# 🔐 SECRETS & ENV FILES
+# SECRETS & ENV FILES
 # ===========================
 *.key
 *.pem
@@ -31,7 +31,7 @@ secret*.yml
 .sops.yaml
 
 # ===========================
-# 🗄️  BACKUPS & DUMPS
+# BACKUPS & DUMPS
 # ===========================
 *dump*.txt
 *dump*.log
@@ -65,7 +65,7 @@ compose-backup/
 *.pid
 
 # ===========================
-# ⚙️ ANSIBLE / INFRASTRUCTURE
+# ANSIBLE / INFRASTRUCTURE
 # ===========================
 *.retry
 inventory/*.ini
@@ -79,7 +79,7 @@ group_vars/vault.yml
 host_vars/vault.yml
 
 # ===========================
-# 🧱 VIRTUAL MACHINES / IMAGES
+# VIRTUAL MACHINES / IMAGES
 # ===========================
 *.qcow2
 *.vdi
@@ -89,7 +89,7 @@ host_vars/vault.yml
 *.iso
 
 # ===========================
-# 🧠 PYTHON / SCRIPTS
+# PYTHON / SCRIPTS
 # ===========================
 __pycache__/
 *.pyc
@@ -104,7 +104,7 @@ Pipfile.lock
 poetry.lock
 
 # ===========================
-# 🧰 BUILD / TEMP / CACHE
+# BUILD / TEMP / CACHE
 # ===========================
 .cache/
 .tmp/
@@ -116,7 +116,7 @@ tmp/
 *.old
 
 # ===========================
-# 💻 EDITORS / IDE
+# EDITORS / IDE
 # ===========================
 .vscode/
 .idea/
@@ -126,7 +126,7 @@ tmp/
 *.sublime-workspace
 
 # ===========================
-# 🧾 SYSTEM / MISC
+# SYSTEM / MISC
 # ===========================
 .DS_Store
 Thumbs.db
@@ -136,7 +136,7 @@ desktop.ini
 lost+found/
 
 # ===========================
-# 📚 DOC / EXPORTS / REPORTS
+# DOC / EXPORTS / REPORTS
 # ===========================
 *.pdf
 *.odt
