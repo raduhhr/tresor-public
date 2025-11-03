@@ -19,36 +19,7 @@ It is designed around security, extensibility, and minimal manual maintenance.
 - `internal_net`: LAN-only access (Grafana, Jellyfin, Prometheus, etc.)  
 - `lan_pub`: LAN broadcast bridge so internal services are visible locally  
 
-Communication between services is explicit, never assumed.
-
-        _____________________Internet                             
-        |                       │					 lan_pub (LAN bridge)
-        |             Cloudflare Tunnel (HTTPS 443)                      ────────────────────
-        |                       │                                                │
-        |                       |                                                │
-        |                    Traefik  (HTTP)                            internal_net (LAN-only)
-        |                       │                                       ───────────────────────
-        |                  public_net                                    • Jellyfin
-        |               (exposed via CF)                                 • FileBrowser
-        |              ─────────────────                                 • Grafana
-        |              • Uptime Kuma                                     • Prometheus
-        |           
-        |                                
-        |
-Velocity MC Proxy-----------------------------------------|
-──────────────────────────                                |
-• Hetzner VPS (WireGuard Server 10.66.66.1)               |
-• Public 25565 / UFW protected                            |
-                                                          |
-                                            mc_pub (WireGuard Client Iface)
-                                            ─────────────────────────────
-                                            • bridge → mc_net (PaperMC)
-                                                           │
-                                                           ▼
-                                                mc_net (isolated backend)
-                                                ─────────────────────────
-                                                • PaperMC (Docker)
-                                                • whitelist-only, offline             
+<pre> ```text Communication between services is explicit, never assumed. _____________________Internet | │ lan_pub (LAN bridge) | Cloudflare Tunnel (HTTPS 443) ──────────────────── | │ │ | | │ | Traefik (HTTP) internal_net (LAN-only) | │ ─────────────────────── | public_net • Jellyfin | (exposed via CF) • FileBrowser | ───────────────── • Grafana | • Uptime Kuma • Prometheus | | | Velocity MC Proxy-----------------------------------------| ────────────────────────── | • Public VPS (WireGuard Server 10.8.0.1) | • Public 25565 / UFW protected | | mc_pub (WireGuard Client Iface) ───────────────────────────── • bridge → mc_net (PaperMC) │ ▼ mc_net (isolated backend) ───────────────────────── • PaperMC (Docker) • whitelist-only, offline ``` </pre>
 
 ## Core Services
 | Service | Description | Exposed? | Network |
