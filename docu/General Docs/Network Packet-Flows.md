@@ -46,13 +46,15 @@ Velocity MC Proxy-----------------------------------------|
                                                 • whitelist-only, offline             
 ```
 
-## Core Docker Networks (Home Node)
+### Core Docker Networks
 
-| Network | Scope | Purpose | Example Services |
-|----------|--------|----------|------------------|
-| `mc_net` | Isolated | Backend game service | Game container only |
-| `public_net` | Internet-facing | Public web exposure via Cloudflare-style tunnel and proxy | Reverse proxy, tunnel client, status page |
-| `internal_net` | LAN-only | Local dashboards, media, and monitoring | Grafana, Prometheus, File Browser, Media Server |
+| Network | Scope | Purpose |
+|----------|--------|----------|
+| `public_net` | Internet-facing | Reverse proxy and web ingress via Cloudflare Tunnel |
+| `lan_pub` | LAN-only bridge | Enables web UI access for internal services from LAN |
+| `internal_net` | Private | Connects monitoring and media containers |
+| `mc_pub` | VPN bridge | Connects Minecraft proxy (VPS) to internal backend |
+| `mc_net` | Isolated | Hosts the backend game server container |
 
 **Rule:** communication between networks is explicitly defined — never assumed.
 
