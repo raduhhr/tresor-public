@@ -21,7 +21,7 @@ It is designed around security, extensibility, and minimal manual maintenance.
 
 <pre>
         _____________________Internet                             
-        |                       │	                     		                 lan_pub (LAN bridge)
+        |                       │	                     		               lan_pub (LAN bridge)
         |             Cloudflare Tunnel (HTTPS 443)                      ────────────────────
         |                       │                                                │
         |                       |                                                │
