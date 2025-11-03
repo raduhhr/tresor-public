@@ -1,0 +1,5 @@
+paper_data_dir: "/ssd/mc-world"
+paper_online_mode: "FALSE"
+paper_enforce_whitelist: "true"
+mc_net: "mc_net"
+

@@ -1,0 +1,13 @@
+grafana_networks:
+ - internal_net
+
+# LAN exposure
+grafana_expose_host_port: true
+grafana_host_port: 3000
+grafana_allow_from_cidr: "192.0.2.10/24"
+
+# Traefik disabled (LAN-only access)
+grafana_enable_traefik: false
+
+# Nice LAN URL in summary
+grafana_root_url: "http://192.0.2.10:3000"

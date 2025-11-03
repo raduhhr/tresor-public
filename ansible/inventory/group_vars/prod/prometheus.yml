@@ -1,0 +1,4 @@
+prometheus_expose_host_port: true
+prometheus_host_port: 9090
+prometheus_allow_from_cidr: "192.0.2.10/24"
+prometheus_network: "internal_net"
