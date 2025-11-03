@@ -80,6 +80,10 @@ Velocity MC Proxy-----------------------------------------|
 - GitHub (Public, sanitized) for roles, scripts, configs  
 - The foundation for the bachelor’s thesis  
 
+## Status: Fully deployed and continuously monitored.  
+All components provisioned through Ansible, containerized under rootless Docker, and secured via Cloudflare Tunnel + WireGuard.  
+System uptime >99.9% since deployment.  
+
 ## Future Expansion
 - Scheduled rsync backups  
 - External USB HDD backup  
@@ -88,7 +92,5 @@ Velocity MC Proxy-----------------------------------------|
 
 ---
 
-**Status:** Fully deployed and continuously monitored.  
-All components provisioned through Ansible, containerized under rootless Docker, and secured via Cloudflare Tunnel + WireGuard.  
-System uptime >99.9% since deployment.  
-Planned: GitOps integration, external backups, and CI/CD rollout.
+
+
