@@ -5,6 +5,9 @@ It features complete Docker network separation, a dedicated public VPS edge node
 Everything from provisioning to deployment is handled entirely through Ansible, with full LAN monitoring via Grafana and Prometheus.  
 It is designed around security, extensibility, and minimal manual maintenance.
 
+> This is the sanitized, fully reproducible public mirror of my self-hosted homelab.  
+> All credentials, IPs, and domains have been replaced or encrypted.
+
 ## Core Principles
 - **No-touch:** only OS and SSH set up manually; everything else via Ansible  
 - **Everything as Code:** infrastructure and deployments are declarative  
