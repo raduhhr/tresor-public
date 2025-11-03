@@ -1,4 +1,4 @@
-# Overview: Tresor – Self-Hosted, Modular, Secure Homelab
+# Tresor – Self-Hosted, Modular, Secure Homelab
 
 Tresor is a fully self-hosted, modular, and automated homelab infrastructure built for personal use, university thesis, and DevOps development.  
 It features complete Docker network separation, a dedicated public VPS edge node, and a local VM mirror (VMM).  
