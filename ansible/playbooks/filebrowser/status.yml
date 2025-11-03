@@ -1,0 +1,47 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: false
+
+ vars:
+ container_Name: <REDACTED>
+ fb_port: "{{ filebrowser_http_port | default(8080) }}"
+ fb_enabled: true # set false if you ever disable it in inventory
+
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: _ci
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "FileBrowser is disabled for this host; skipping runtime checks."
+ when: not fb_enabled
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - not _ci.exists
+ fail_msg: "FileBrowser is disabled but the container exists."
+ when: not fb_enabled
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _ci.exists
+ - _ci.container.State.Running
+ - _ci.container.State.ExitCode == 0
+ fail_msg: "FileBrowser container not healthy or not running."
+ when: fb_enabled
+
+ - Name: <REDACTED>
+ ansible.builtin.uri:
+ url: "http://192.0.2.10:{{ fb_port }}/"
+ status_code: 200
+ return_content: false
+ changed_when: false
+ when: fb_enabled
+

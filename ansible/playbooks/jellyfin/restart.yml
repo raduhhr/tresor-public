@@ -1,0 +1,12 @@
+---
+- Name: <REDACTED>
+ hosts: prod
+ become: true
+ gather_facts: false
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ state: started
+ restart: true
+

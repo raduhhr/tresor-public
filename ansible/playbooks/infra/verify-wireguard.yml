@@ -1,0 +1,44 @@
+---
+# playbooks/infra/verify-wireguard.yml
+- Name: <REDACTED>
+ hosts: local-node
+ become: true
+ gather_facts: false
+
+ tasks:
+ - Name: <REDACTED>
+ ansible.builtin.systemd:
+ Name: <REDACTED>
+ state: started
+ register: _svc
+
+ - Name: <REDACTED>
+ ansible.builtin.command: "wg show"
+ register: _wg
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ wg_latest_handshake: "{{ _wg.stdout | regex_search('latest handshake:.*', multiline=True) | default('no-handshake') }}"
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ wg_bind_ip: "{{ hostvars[inventory_hostname].wg_bind_ip | default('192.0.2.10') }}"
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ service_changed: "{{ _svc is changed }}"
+ latest_handshake: "{{ wg_latest_handshake }}"
+ wg_bind_ip: "{{ wg_bind_ip }}"
+ tip: "Paper should publish on {{ wg_bind_ip }}:25565 only."
+
+ - Name: <REDACTED>
+ ansible.builtin.command: "ss -tnlp | grep '{{ wg_bind_ip }}:25565'"
+ register: _ss
+ failed_when: false
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "{{ _ss.stdout | default('Paper not started yet or not bound to WG IP.') }}"

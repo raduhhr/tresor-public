@@ -1,0 +1,15 @@
+# playbooks/traefik/status.yml
+---
+- Name: <REDACTED>
+ hosts: all
+ gather_facts: false
+
+ vars:
+ status_container: "traefik"
+ # Optional: assert these ports exist
+ status_expected_ports:
+ - "80/tcp"
+ - "8081/tcp"
+
+ tasks:
+ - import_tasks: "../../roles/traefik/tasks/status.yml"

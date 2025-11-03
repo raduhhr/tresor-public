@@ -1,0 +1,245 @@
+---
+# playbooks/jellyfin/deploy.yml
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: false
+
+ vars:
+ jellyfin_image: "jellyfin/jellyfin:latest"
+ jellyfin_http_port: 8096
+ media_root: "/mnt/data/files" # HDD library path (RO in container)
+ config_root: "/ssd/configs/jellyfin" # config/cache on SSD
+ media_group: "mediausers"
+ run_uid: 1000
+ run_gid: null
+ enable_hw_accel: false
+ lan_bridge: "lan_pub"
+ jellyfin_force_port_takeover: false # evict non-jellyfin container on same port
+ allow_from_cidr: "192.0.2.10/24"
+
+ pre_tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: true
+
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: false
+
+ - Name: <REDACTED>
+ ansible.builtin.group:
+ Name: <REDACTED>
+ state: present
+
+ - Name: <REDACTED>
+ ansible.builtin.command: "getent group {{ media_group }}"
+ register: media_group_info
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ run_gid: >-
+ {{
+ (media_group_info.stdout.split(':') | length > 2)
+ | ternary(media_group_info.stdout.split(':')[2], '1000')
+ }}
+
+ - Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ media_root }}"
+ state: directory
+ owner: root
+ group: "{{ media_group }}"
+ mode: "0775"
+
+ - Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ item }}"
+ state: directory
+ owner: "{{ run_uid }}"
+ group: "{{ run_gid }}"
+ mode: "02775"
+ loop:
+ - "{{ config_root }}"
+ - "{{ config_root }}/config"
+ - "{{ config_root }}/log"
+ - "{{ config_root }}/cache"
+
+ - Name: <REDACTED>
+ ansible.builtin.copy:
+ dest: "{{ config_root }}/config/migrations.xml"
+ content: '<?xml version="1.0" encoding="utf-8"?><migrations />'
+ owner: "{{ run_uid }}"
+ group: "{{ run_gid }}"
+ mode: "0664"
+ force: false
+
+ - Name: <REDACTED>
+ ansible.builtin.file:
+ path: "{{ config_root }}"
+ state: directory
+ owner: "{{ run_uid }}"
+ group: "{{ run_gid }}"
+ recurse: true
+ changed_when: false
+
+ tasks:
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ jellyfin_volumes:
+ - "{{ config_root }}:/config:rw"
+ - "{{ config_root }}/cache:/cache:rw"
+ - "{{ media_root }}:/media:ro"
+ - "/etc/localtime:/etc/localtime:ro"
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ jellyfin_devices: "{{ ['/dev/dri:/dev/dri'] if enable_hw_accel else [] }}"
+
+ # --- Read existing Jellyfin state ---
+ - Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: jf_info
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _jf_exists: "{{ jf_info.exists | default(false) | bool }}"
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _jf_running: >-
+ {{ (jf_info.container.State.Running | default(false)) | bool
+ if _jf_exists else false }}
+ _jf_health: >-
+ {{ (jf_info.container.State.Health.Status | default(''))
+ if (_jf_exists and (jf_info.container.State is defined)
+ and (jf_info.container.State.Health is defined))
+ else '' }}
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _jf_healthy: "{{ _jf_health == 'healthy' }}"
+
+ # --- Port owner discovery / protection ---
+ - Name: <REDACTED>
+ ansible.builtin.shell: |
+ set -euo pipefail
+ docker ps --format '{{'{{'}}.ID{{'}}'}} {{'{{'}}.Names{{'}}'}} {{'{{'}}.Ports{{'}}'}}' \
+ | awk '
+ {
+ id=$1; name=$2; $1=""; $2="";
+ sub(/^ +/, "", $0); ports=$0;
+ if (ports ~ /:{{ jellyfin_http_port }}->/) { print id" "name }
+ }'
+ args:
+ executable: /bin/bash
+ register: port_holders
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _holder_id: "{{ (port_holders.stdout_lines | default([])) | first | default('') | regex_search('^([^ ]+)', '\\1') | default('') }}"
+ _holder_Name: <REDACTED>
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.shell: |
+ set -euo pipefail
+ ss -ltnp | awk '$4 ~ /:{{ jellyfin_http_port }}$/ {print $0}'
+ args:
+ executable: /bin/bash
+ register: ss_check
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ _port_busy_non_docker: >-
+ {{
+ (ss_check.stdout | length > 0)
+ and (_holder_name | length == 0)
+ and (ss_check.stdout is not search('rootlesskit'))
+ }}
+ _port_conflict: >-
+ {{
+ (_holder_name | length > 0) and (_holder_name != 'jellyfin')
+ }}
+
+ - Name: <REDACTED>
+ when: _port_busy_non_docker
+ ansible.builtin.fail:
+ msg: >-
+ Port {{ jellyfin_http_port }} is already in use by a non-Docker process:
+ {{ ss_check.stdout | default('UNKNOWN') }}.
+ Stop that process or free the port, then re-run the play.
+
+ # --- New: warn+skip when another container holds the port (unless forced) ---
+ - Name: <REDACTED>
+ when:
+ - _port_conflict
+ - jellyfin_force_port_takeover | bool
+ community.docker.docker_container:
+ Name: <REDACTED>
+ state: absent
+ force_kill: true
+
+ - Name: <REDACTED>
+ when:
+ - _port_conflict
+ - not (jellyfin_force_port_takeover | bool)
+ block:
+ - ansible.builtin.debug:
+ msg: >-
+ [SKIP] Port {{ jellyfin_http_port }} is held by '{{ _holder_name }}' ({{ _holder_id }}).
+ Not a failure. Re-run with -e jellyfin_force_port_takeover=true to evict it.
+ - ansible.builtin.set_fact:
+ jellyfin_skip_due_to_port_conflict: true
+
+ # --- Idempotent ensure-present start/update (SKIP if already good or blocked) ---
+ - Name: <REDACTED>
+ when:
+ - _jf_running
+ - _jf_healthy
+ - (_holder_name == '' or _holder_name == 'jellyfin')
+ ansible.builtin.debug:
+ msg: "Jellyfin already healthy on {{ jellyfin_http_port }} — nothing to do."
+
+ - Name: <REDACTED>
+ when: >
+ not ( _jf_running and _jf_healthy and (_holder_name == '' or _holder_name == 'jellyfin') )
+ and not ( jellyfin_skip_due_to_port_conflict | default(false) )
+ community.docker.docker_container:
+ Name: <REDACTED>
+ image: "{{ jellyfin_image }}"
+ pull: true
+ state: started
+ restart_policy: unless-stopped
+ recreate: false
+ networks:
+ - Name: <REDACTED>
+ - Name: <REDACTED>
+ user: "{{ run_uid }}:{{ run_gid }}"
+ published_ports:
+ - "192.0.2.10:{{ jellyfin_http_port }}:8096"
+ volumes: "{{ jellyfin_volumes }}"
+ devices: "{{ jellyfin_devices }}"
+ healthcheck:
+ test: ["CMD-SHELL", "curl --noproxy 'localhost' -LksSf http://localhost:8096/health || exit 1"]
+ interval: 30s
+ timeout: 10s
+ retries: 10
+ start_period: 30s
+
+ - Name: <REDACTED>
+ become: true
+ community.general.ufw:
+ rule: allow
+ proto: tcp
+ from_ip: "{{ allow_from_cidr }}"
+ to_port: "{{ jellyfin_http_port }}"
+

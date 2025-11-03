@@ -1,0 +1,47 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: false
+
+ vars:
+ container_Name: <REDACTED>
+ jf_port: "{{ jellyfin_http_port | default(8096) }}"
+ jf_enabled: true # set false if disabled for QA or LAN tests
+
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: _ci
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "Jellyfin is disabled for this host; skipping runtime checks."
+ when: not jf_enabled
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - not _ci.exists
+ fail_msg: "Jellyfin is disabled but the container exists."
+ when: not jf_enabled
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _ci.exists
+ - _ci.container.State.Running
+ - _ci.container.State.ExitCode == 0
+ fail_msg: "Jellyfin container not healthy or not running."
+ when: jf_enabled
+
+ - Name: <REDACTED>
+ ansible.builtin.uri:
+ url: "http://192.0.2.10:{{ jf_port }}/web/index.html"
+ status_code: 200
+ return_content: false
+ changed_when: false
+ when: jf_enabled
+

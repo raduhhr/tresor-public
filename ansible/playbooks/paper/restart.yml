@@ -1,0 +1,40 @@
+# playbooks/paper/restart.yml
+- Name: <REDACTED>
+ hosts: local-node
+ gather_facts: false
+ become: true
+ vars:
+ paper_container: paper
+ paper_wg_ip: 192.0.2.10
+ paper_port: 25565
+ logs_tail: 100
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: paper_info
+
+ - Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ state: started
+ restart: true
+ when: paper_info.exists
+
+ # Probe from VPS (allowed by your firewall)
+ - Name: <REDACTED>
+ ansible.builtin.wait_for:
+ host: "{{ paper_wg_ip }}"
+ port: "{{ paper_port }}"
+ timeout: 90
+ delegate_to: edge-node
+ run_once: true
+
+ - Name: <REDACTED>
+ ansible.builtin.shell: "docker logs --tail {{ logs_tail }} {{ paper_container }}"
+ register: paper_logs
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "{{ paper_logs.stdout }}"

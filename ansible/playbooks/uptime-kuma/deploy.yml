@@ -1,0 +1,6 @@
+---
+- Name: <REDACTED>
+ hosts: local-node
+ become: true
+ roles:
+ - uptime-kuma

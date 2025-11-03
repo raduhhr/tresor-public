@@ -1,0 +1,21 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: false
+
+ vars:
+ container_Name: <REDACTED>
+
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ restart: true
+ register: _restart
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "cloudflared restarted successfully"
+ when: _restart.changed
+

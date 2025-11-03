@@ -1,0 +1,16 @@
+---
+- Name: <REDACTED>
+ hosts: prod
+ become: true
+ gather_facts: true
+
+ pre_tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: false
+
+ roles:
+ - role: cloudflared
+

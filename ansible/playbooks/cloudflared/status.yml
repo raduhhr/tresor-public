@@ -1,0 +1,47 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: false
+
+ vars:
+ tunnel_expected: "{{ cloudflared.enabled | default(true) | bool }}"
+ metrics_enabled: "{{ (cloudflared.enable_metrics | default(true) | bool) and tunnel_expected }}"
+ metrics_port: "{{ cloudflared.metrics_port | default(8086) }}"
+
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ register: _ci
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "cloudflared is disabled for this host; skipping runtime checks."
+ when: not tunnel_expected
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - not _ci.exists
+ fail_msg: "cloudflared is disabled but the container exists."
+ when: not tunnel_expected
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - _ci.exists
+ - _ci.container.State.Running
+ - _ci.container.State.ExitCode == 0
+ fail_msg: "cloudflared container not healthy."
+ when: tunnel_expected
+
+ - Name: <REDACTED>
+ ansible.builtin.uri:
+ url: "http://192.0.2.10:{{ metrics_port }}/metrics"
+ status_code: 200
+ return_content: false
+ changed_when: false
+ when: metrics_enabled
+

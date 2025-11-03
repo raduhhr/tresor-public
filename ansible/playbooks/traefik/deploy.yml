@@ -1,0 +1,26 @@
+---
+# playbooks/traefik/deploy.yml
+- Name: <REDACTED>
+ hosts: all
+ become: true
+
+ pre_tasks:
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that: (traefik_dashboard_mode | default('off')) in ['off', 'local']
+ fail_msg: "Dashboard exposure forbidden. Allowed values: off | local."
+
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: false
+ ipam_config:
+ - subnet: "192.0.2.10/24"
+ gateway: "192.0.2.10"
+
+ - Name: <REDACTED>
+ ansible.builtin.import_role:
+ Name: <REDACTED>
+ tags: ['traefik']

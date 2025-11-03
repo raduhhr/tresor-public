@@ -1,0 +1,21 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: false
+
+ vars:
+ container_Name: <REDACTED>
+
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_container:
+ Name: <REDACTED>
+ state: stopped
+ register: _stop
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg: "Jellyfin stopped successfully"
+ when: _stop.changed
+

@@ -1,0 +1,45 @@
+---
+- Name: <REDACTED>
+ hosts: local-node
+ become: true
+ tasks:
+
+ - Name: <REDACTED>
+ file:
+ path: /mnt/data/files/Backups/paper
+ state: directory
+ owner: root
+ group: root
+ mode: '0755'
+
+ - Name: <REDACTED>
+ copy:
+ dest: /usr/local/bin/backup-paper-snapshot.sh
+ mode: '0755'
+ owner: root
+ group: root
+ content: |
+ #!/bin/bash
+ set -euo pipefail
+
+ BACKUP_DIR="/mnt/data/files/Backups/paper"
+ DATE=$(date +%d%m%Y-%H%M) # european day-month-year-hour-minute
+ SNAPSHOT="$BACKUP_DIR/paper-backup-$DATE.tar.gz"
+
+ # Create compressed backup
+ tar -czf "$SNAPSHOT" -C /ssd/services paper
+
+ # Delete snapshots older than 30 days
+ find "$BACKUP_DIR" -name 'paper-backup-*.tar.gz' -mtime +30 -delete
+
+ # Log
+ echo "[$(date '+%Y-%m-%d %H:%M:%S')] Snapshot created: $SNAPSHOT" >> /var/log/paper-backup.log
+
+ - Name: <REDACTED>
+ cron:
+ Name: <REDACTED>
+ job: "/usr/local/bin/backup-paper-snapshot.sh >/dev/null 2>&1"
+ minute: "0"
+ hour: "3"
+ user: root
+ state: present

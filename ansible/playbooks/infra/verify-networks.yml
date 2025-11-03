@@ -1,0 +1,25 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ vars:
+ networks_src: "{{ local-node_networks }}"
+ tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network_info:
+ Name: <REDACTED>
+ loop: "{{ networks_src }}"
+ register: netinfo
+
+ - Name: <REDACTED>
+ ansible.builtin.assert:
+ that:
+ - item.exists | default(false)
+ - (item.network.Internal | default(false)) == (item.item.internal | bool)
+ - (item.network.IPAM.Config[0].Subnet | default('')) == (item.item.subnet)
+ - (item.network.IPAM.Config[0].Gateway | default('')) == (item.item.gateway)
+ quiet: true
+ loop: "{{ netinfo.results }}"
+ loop_control:
+ label: "{{ item.item.name }}"
+

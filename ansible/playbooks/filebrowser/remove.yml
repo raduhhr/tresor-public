@@ -1,0 +1,9 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ tasks:
+ - community.docker.docker_container:
+ Name: <REDACTED>
+ state: absent
+ force_kill: true

@@ -1,0 +1,23 @@
+---
+- Name: <REDACTED>
+ hosts: local-node
+ become: true
+ gather_facts: false
+
+ pre_tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ state: present
+ loop:
+ - internal_net
+ - public_net
+
+ roles:
+ - role: grafana
+
+ post_tasks:
+ - Name: <REDACTED>
+ ansible.builtin.include_role:
+ Name: <REDACTED>
+ tasks_from: verify

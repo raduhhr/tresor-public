@@ -1,0 +1,80 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: true
+
+ vars:
+ # Leave empty to include ALL containers, or pass a subset at runtime:
+ # -e 'filter_names=["traefik","cloudflared","jellyfin","filebrowser"]'
+ filter_names: []
+
+ tasks:
+ - Name: <REDACTED>
+ ansible.builtin.command: uptime -p
+ register: host_uptime_pretty
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.command: >
+ docker ps -a --format '{{"{{"}}json .{{"}}"}}'
+ register: docker_ps
+ changed_when: false
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ containers_list: "{{ docker_ps.stdout_lines | map('from_json') | list }}"
+
+ - Name: <REDACTED>
+ ansible.builtin.set_fact:
+ containers_effective: >-
+ {{
+ containers_list
+ if (filter_names | length == 0)
+ else (containers_list | selectattr('Names','in', filter_names) | list)
+ }}
+
+ - Name: <REDACTED>
+ community.docker.docker_container_info:
+ Name: <REDACTED>
+ loop: "{{ containers_effective }}"
+ loop_control:
+ label: "{{ item.Names }}"
+ register: deep
+ changed_when: false
+
+ - Name: <REDACTED>
+ vars:
+ ci: "{{ item.container }}"
+ ps: "{{ item.item }}"
+ ansible.builtin.set_fact:
+ rows: "{{ (rows | default([])) + [ {
+ 'name': (ci.Name | default(ps.Names)),
+ 'running': (ci.State.Running | default(false)),
+ 'status': (ps.Status | default('unknown')),
+ 'image': (ps.Image | default('n/a')),
+ 'ports': (ps.Ports | default('')),
+ 'started_at': (ci.State.StartedAt | default('')),
+ 'running_for': (ps.RunningFor | default(''))
+ } ] }}"
+ loop: "{{ deep.results }}"
+ loop_control:
+ label: "{{ ps.Names }}"
+
+ - Name: <REDACTED>
+ ansible.builtin.debug:
+ msg:
+ host: "{{ inventory_hostname }}"
+ host_uptime_pretty: "{{ host_uptime_pretty.stdout | default('n/a') }}"
+ containers: "{{ rows | default([]) }}"
+ changed_when: false
+
+ - Name: <REDACTED>
+ vars:
+ total: "{{ rows | default([]) | length }}"
+ running: "{{ rows | default([]) | selectattr('running','equalto',true) | list | length }}"
+ stopped: "{{ rows | default([]) | selectattr('running','equalto',false) | list | length }}"
+ ansible.builtin.debug:
+ msg: "{{ total }} containers — {{ running }} running, {{ stopped }} stopped."
+ changed_when: false
+

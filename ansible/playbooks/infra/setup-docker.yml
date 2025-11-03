@@ -1,0 +1,18 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ gather_facts: true
+
+ pre_tasks:
+ - Name: <REDACTED>
+ assert:
+ that:
+ - ansible_facts.os_family == "Debian"
+ - ansible_facts.distribution_major_version == "12"
+ fail_msg: "This playbook is for Debian 12 only."
+
+ roles:
+ - role: docker
+ tags: [docker]
+

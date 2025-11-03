@@ -1,0 +1,23 @@
+- hosts: all
+ become: true
+ Name: <REDACTED>
+
+ pre_tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: true
+ driver_options:
+ com.docker.network.bridge.Name: <REDACTED>
+
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ driver: bridge
+ internal: false
+ driver_options:
+ com.docker.network.bridge.Name: <REDACTED>
+
+ roles:
+ - filebrowser

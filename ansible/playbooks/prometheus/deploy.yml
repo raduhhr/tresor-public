@@ -1,0 +1,20 @@
+---
+- Name: <REDACTED>
+ hosts: local-node
+ become: true
+ gather_facts: true
+
+ pre_tasks:
+ - Name: <REDACTED>
+ community.docker.docker_network:
+ Name: <REDACTED>
+ state: present
+
+ roles:
+ - role: prometheus
+
+ post_tasks:
+ - Name: <REDACTED>
+ ansible.builtin.include_role:
+ Name: <REDACTED>
+ tasks_from: verify

@@ -1,0 +1,7 @@
+---
+- Name: <REDACTED>
+ hosts: all
+ become: true
+ roles:
+ - networks
+
