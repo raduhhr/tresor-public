@@ -17,7 +17,7 @@ All public ingress is routed through an encrypted tunnel and reverse proxy.
 
 ```
         _____________________Internet                             
-        |                       │                         		 lan_pub (LAN bridge)
+        |                       │                         		         lan_pub (LAN bridge)
         |             Cloudflare Tunnel (HTTPS 443)                      ────────────────────
         |                       │                                                │
         |                       |                                                │
