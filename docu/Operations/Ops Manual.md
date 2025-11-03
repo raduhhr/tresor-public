@@ -159,7 +159,7 @@ ansible home-node -i inventory/hosts.ini -a "docker logs -n 50 prometheus"
 
 ## 🔹 Notes & Tips
 
-* Always run playbooks from the project root (`~/tresor/ansible`).
+* Always run playbooks from the project root (`/project_root/ansible`).
 * Never commit vault passwords — keep `.vault_pass.txt` local and gitignored.
 * Use `--limit` to target a specific node or group (`home-node`, `edge-node`, `prod`, `qa`, etc.).
 * For testing in sandbox environments, use `--limit qa` or `--limit vm`.
