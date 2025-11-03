@@ -1,4 +1,6 @@
-project_root_folder-ansible/
+
+```bash
+project-folder-root/
 ├── ansible.cfg
 ├── inventory/
 │   ├── group_vars/
@@ -58,4 +60,7 @@ project_root_folder-ansible/
     ├── qa.vault       [ENCRYPTED]
     └── vps.vault      [ENCRYPTED]
 
-110 directories, ~160 files
+ 110 directories, ~160 files
+```
+
+
