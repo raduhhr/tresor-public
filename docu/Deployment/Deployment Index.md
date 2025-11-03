@@ -273,8 +273,6 @@ Generates a summary report of container and service status across all nodes.
 
 ---
 
-**End of Deployment Workflow**
 
-```
 
 
