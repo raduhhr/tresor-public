@@ -66,6 +66,38 @@ Velocity MC Proxy-----------------------------------------|
 | Jellyfin | Media server (LAN-only) | ❌ | internal_net |
 | File Browser | Web UI for file management | ❌ | internal_net |
 
+# Monitoring Stack — Prometheus, Grafana, cAdvisor, Node Exporter
+
+All components operate **LAN-only** — no external exposure.  
+Data flows one way: metrics are **pulled internally**; there are **no WAN-bound pushes or telemetry**.
+
+```
+
+[Node Exporter]     [cAdvisor]
+│                   │
+└─────> Prometheus ◄┘
+│
+▼
+Grafana
+
+````
+
+---
+**Grafana Host dashboard**
+<img width="2542" height="1212" alt="image" src="https://github.com/user-attachments/assets/25ae2361-3c91-4f04-890c-7434857cc337" />
+
+**Grafana Containers dashboard**
+<img width="2560" height="1267" alt="image" src="https://github.com/user-attachments/assets/3093b781-33d3-4939-8d51-69f46bf0873b" />
+
+
+| Component | Role | Network | Access |
+|------------|------|----------|--------|
+| **Prometheus** | Metrics collector | `internal_net` | `http://internal-node:9090` |
+| **Grafana** | Visualization dashboard | `internal_net` | `http://internal-node:3000` |
+| **Node Exporter** | Host metrics | Host → `internal_net` | Pulled by Prometheus |
+| **cAdvisor** | Docker metrics | Container → `internal_net` | Pulled by Prometheus |
+| **Uptime Kuma** | Public uptime badge | `public_net` | Routed via Cloudflare Tunnel + Traefik |
+
 ## Security Stack
 - Cloudflare Tunnel → no open ports publicly  
 - Rate limiting via Traefik middleware  
