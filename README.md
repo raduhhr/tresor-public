@@ -12,7 +12,7 @@ It is designed around security, extensibility, and minimal manual maintenance.
 - **No-touch:** only OS and SSH set up manually; everything else via Ansible  
 - **Everything as Code:** infrastructure and deployments are declarative  
 - **Modular Design:** each component isolated in its own Ansible role  
-- **Security-first:** Cloudflare Tunnel, UFW, Fail2Ban, Docker network separation  
+- **Security-first:** Cloudflare Tunnel, Fail2Ban, Docker network separation  
 - **Reproducible:** can be redeployed identically on any system  
 
 ## Networking Architecture
@@ -70,7 +70,6 @@ Velocity MC Proxy-----------------------------------------|
 - Cloudflare Tunnel → no open ports publicly  
 - Rate limiting via Traefik middleware  
 - Fail2Ban for brute-force protection  
-- UFW default-deny  
 - Ansible Vault → no tokens in Git  
 
 ## Users & Access
@@ -84,7 +83,7 @@ Velocity MC Proxy-----------------------------------------|
 - The foundation for the bachelor’s thesis  
 
 ## Status: Fully deployed and continuously monitored.  
-All components provisioned through Ansible, containerized under rootless Docker, and secured via Cloudflare Tunnel + WireGuard.  
+All components provisioned through Ansible, containerized under Docker, and secured via Cloudflare Tunnel + WireGuard.  
 System uptime >99.9% since deployment.  
 
 ## Future Expansion
