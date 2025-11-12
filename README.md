@@ -118,6 +118,11 @@ Grafana
 All components provisioned through Ansible, containerized under Docker, and secured via Cloudflare Tunnel + WireGuard.  
 System uptime >99.9% since deployment.  
 
+**small status-all playbook output**
+> Paper (Minecraft server) is unhealthy because it’s so locked down not even Docker’s health probe can reach it.
+<img width="576" height="1084" alt="image" src="https://github.com/user-attachments/assets/0d6d1e13-ca5f-4eb3-9f97-ca92465c39be" />
+
+
 ## Future Expansion
 - Scheduled rsync backups  
 - External USB HDD backup  
