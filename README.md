@@ -119,8 +119,9 @@ All components provisioned through Ansible, containerized under Docker, and secu
 System uptime >99.9% since deployment.  
 
 **small status-all playbook output**
-> Paper (Minecraft server) is unhealthy because it’s so locked down not even Docker’s health probe can reach it.
-<img width="576" height="1084" alt="image" src="https://github.com/user-attachments/assets/0d6d1e13-ca5f-4eb3-9f97-ca92465c39be" />
+> Paper (MC server) is the only unhealthy service because it’s so locked down not even Docker’s health probe can reach it.
+<img width="694" height="1299" alt="image" src="https://github.com/user-attachments/assets/3963ff02-ae2f-408f-adc9-622f4fe04b00" />
+
 
 
 ## Future Expansion
