@@ -1,4 +1,4 @@
-# Tresor – Self-Hosted, Modular, Secure Homelab
+<img width="2549" height="820" alt="image" src="https://github.com/user-attachments/assets/6826927f-c7e9-4102-83bb-834e35503d75" /># Tresor – Self-Hosted, Modular, Secure Homelab
 
 Tresor is a fully self-hosted, modular, and automated homelab infrastructure built for personal use, university thesis, and DevOps development.  
 It features complete Docker network separation, a dedicated public VPS edge node, and a local VM mirror (VMM).  
@@ -65,6 +65,14 @@ Velocity MC Proxy-----------------------------------------|
 | Prometheus | Metrics collector | ❌ | internal_net |
 | Jellyfin | Media server (LAN-only) | ❌ | internal_net |
 | File Browser | Web UI for file management | ❌ | internal_net |
+
+**Jellyfin libraries**
+<img width="1812" height="900" alt="image" src="https://github.com/user-attachments/assets/44f53ac0-99c3-4398-9551-f9ad258843a5" />
+
+**Filebrowser tree**
+<img width="2548" height="750" alt="image" src="https://github.com/user-attachments/assets/55660215-7628-417b-8bbc-ecd4c9a9fb98" />
+
+
 
 # Monitoring Stack — Prometheus, Grafana, cAdvisor, Node Exporter
 
