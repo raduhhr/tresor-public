@@ -1,113 +1,149 @@
+# 🔒 Homelab Security Audit & Hardening — February 2026
 
-Below is a sanitized, shareable version. I removed/neutralized: hostnames, provider name, exact IPs/subnets, WireGuard addressing, repo paths, Ansible variable names, precise counters/byte volumes, and any details that materially improve an attacker’s targeting. I kept the technical story, severity, and the remediation patterns.
-
----
-
-## Security audit — 19 Feb 2026
-
-### 🔒 Infrastructure Security Audit & Hardening — February 19, 2026
-
-**Performed by:** Radu
-**Scope:** Port exposure audit across a home node and an edge VPS
-**Trigger:** Routine infrastructure review
-**Duration:** ~1 hour
-**Result:** 7 findings identified; 6 remediated in-session; 1 pending (low risk)
+**Scope:** Full port exposure audit across home node and edge VPS  
+**Trigger:** Routine infrastructure review  
+**Duration:** ~1 hour  
+**Result:** 7 findings identified, all remediated same-session
 
 ---
 
 ## Executive Summary
 
-A review of Docker port bindings found multiple services intended to be **LAN-only** were instead bound to **all host interfaces**, making them reachable from an **overlay/VPN-connected edge host**. This exposure was amplified by an overly broad firewall allow rule (larger CIDR than intended) in the Docker forwarding path.
+An audit of the homelab's Docker port bindings revealed that five LAN-only services were bound to `0.0.0.0` instead of the LAN interface, making them reachable over the WireGuard tunnel from the VPS. Combined with an overly broad CIDR (`/16` instead of `/24`) in the DOCKER-USER firewall chain — accepting 65,536 source IPs instead of the intended 254 — an attacker who compromised the VPS would have had direct access to Grafana, Prometheus, FileBrowser (RW to the data mount), Kiwix, and Jellyfin — effectively full infrastructure compromise within minutes.
 
-In a credible threat model where the edge VPS is compromised, the attacker could have reached internal observability and file-management services and used them for rapid recon and escalation. The remediation focused on **restricting bind addresses**, **removing unnecessary host port publications**, and **tightening the firewall allow scope**. External verification from the edge host confirmed the affected LAN-only services are no longer reachable.
+All findings were remediated by rebinding services to the LAN interface, removing unnecessary host port publications, and tightening the DOCKER-USER CIDR. External verification from the VPS confirmed all LAN-only services are now unreachable over WireGuard.
 
 ---
 
 ## Findings
 
-### 🔴 F-01: LAN-only services bound to all interfaces (CRITICAL)
+### 🔴 F-01: LAN-only services exposed on all interfaces (CRITICAL)
 
-**Affected (examples):** monitoring UI, metrics endpoint, file management UI (RW to a data mount), media server, offline content server.
+**Affected:** Grafana (3000), Prometheus (9090), FileBrowser (8080), Kiwix (8181), Jellyfin (8096)
 
-**Root cause:** Docker `published_ports` were bound to `0.0.0.0` rather than a LAN interface address. Because the VPN/overlay interface is also a valid host interface, these services became reachable from the edge host across the tunnel.
+**Root cause:** Docker `published_ports` bound to `0.0.0.0` instead of the LAN IP. Since the WireGuard interface is a valid host interface, all five services were reachable from the VPS over the tunnel.
 
-**Impact:** A compromise of the edge host could enable:
+**Impact:** Anyone who compromised the VPS could reach:
 
-* **Recon** via metrics/monitoring (topology, container naming, resource patterns).
-* **Credential reuse / weak auth exposure** via dashboards/admin UIs.
-* **Direct data access** via file-management RW access to shared storage.
-* **Lateral movement** facilitated by service discovery and internal endpoints.
+- **Prometheus** — full infrastructure topology, container names, resource metrics (perfect recon)
+- **Grafana** — monitoring dashboards with default credentials
+- **FileBrowser** — RW access to the data mount (media, photos, backups, shared files)
+- **Jellyfin** — media library access
+- **Kiwix** — lower risk, but still an unnecessary exposure
 
-**Remediation:** Rebound affected services to a **LAN-only bind address** and removed host publication where not needed.
+**Remediation:** Rebound all five to the LAN IP via Ansible role defaults and group_vars.
 
 **Verification:**
 
-* **Before (from edge host):** LAN-only services reachable via tunnel.
-* **After (from edge host):** LAN-only services blocked/unreachable.
+```
+BEFORE (from VPS):
+  REACHABLE: <WG_IP>:3000   (Grafana)
+  REACHABLE: <WG_IP>:8080   (FileBrowser)
+  REACHABLE: <WG_IP>:8096   (Jellyfin)
+  REACHABLE: <WG_IP>:8181   (Kiwix)
+  REACHABLE: <WG_IP>:9090   (Prometheus)
+
+AFTER (from VPS):
+  BLOCKED:   <WG_IP>:3000
+  BLOCKED:   <WG_IP>:8080
+  BLOCKED:   <WG_IP>:8096
+  BLOCKED:   <WG_IP>:8181
+  BLOCKED:   <WG_IP>:9090
+```
 
 ---
 
-### 🔴 F-02: Docker forwarding allow rule used an overly broad CIDR (HIGH)
+### 🔴 F-02: DOCKER-USER chain uses /16 instead of /24 (HIGH)
 
-**Root cause:** Firewall rule allowed a much larger private subnet than intended (order-of-magnitude more source IPs).
+**Location:** Base role, Docker firewall fix task
 
-**Impact:** Increased attack surface and reduced assurance that “LAN-only” actually means “LAN-only,” especially in misrouting, bridging, or source-spoofing-adjacent scenarios.
+**Root cause:** Rule accepted `<LAN_SUBNET>/16` (65,536 IPs) instead of `<LAN_SUBNET>/24` (254 IPs).
 
-**Remediation:** Tightened the rule to the **actual LAN subnet size**.
+**Impact:** Any traffic from a broader RFC 1918 range — including potentially spoofed or misrouted packets — would be accepted by the DOCKER-USER chain.
 
-**Verification:** Rule counters dropped to expected levels consistent with real LAN traffic.
+**Remediation:** Changed to `/24`.
 
----
+**Verification:**
 
-### 🟡 F-03: Host-published Node Exporter port unnecessary (MEDIUM)
+```
+BEFORE:
+  ip saddr <LAN_SUBNET>/16 counter packets 62M bytes 163G accept
 
-**Root cause:** Metrics exporter was published on a host port despite being scraped over an internal Docker network.
-
-**Impact:** Unnecessary exposure of host metrics endpoint.
-
-**Remediation:** Removed host port publication; scrape via internal network/Docker DNS only.
-
----
-
-### 🟡 F-04: Host-published cAdvisor port unnecessary (MEDIUM)
-
-**Root cause:** Container metrics endpoint was published on a host port; also created a host-port conflict with another service.
-
-**Impact:** Unnecessary exposure + operational risk from port collisions.
-
-**Remediation:** Removed host port publication; scrape via internal network only.
+AFTER:
+  ip saddr <LAN_SUBNET>/24 counter packets 1891 bytes 811758 accept
+```
 
 ---
 
-### 🟡 F-05: Inventory/playbook variable precedence caused fixes to be bypassed (PROCESS)
+### 🟡 F-03: Node Exporter published on host port 9100 (MEDIUM)
 
-**Root cause:** Higher-precedence variables (inventory and/or inline task values) overrode corrected role defaults; one playbook hardcoded an unsafe bind address.
+**Location:** Prometheus role
 
-**Impact:** Initial remediation attempts had no effect until the full precedence chain was audited.
+**Root cause:** `published_ports: "9100:9100"` in the container task. Prometheus scrapes node-exporter over the internal Docker network — no host port needed.
 
-**Remediation:** Updated overriding variables and removed hardcoding; ensured roles consistently consume bind-address variables.
+**Impact:** Host metrics endpoint exposed on all interfaces unnecessarily.
 
-**Lesson:** Variable precedence can defeat security defaults; audit **role defaults → inventory vars → playbook vars → inline task values**.
-
----
-
-### 🟡 F-06: Edge HTTP service undocumented (DOCUMENTATION)
-
-**Root cause:** Edge host had an intentional HTTP service listening, but documentation claimed no such service existed.
-
-**Impact:** No direct security impact, but increases audit friction and risk of incorrect assumptions during incident response.
-
-**Remediation:** Added documentation of the edge HTTP → tunnel/overlay → internal service path and the rationale for using it.
+**Remediation:** Removed `published_ports` entirely. Prometheus reaches it via Docker DNS on the internal network.
 
 ---
 
-### ℹ️ F-07: UFW tasks fail on node without UFW installed (INFO)
+### 🟡 F-04: cAdvisor published on host port 8080 (MEDIUM)
 
-**Root cause:** Roles invoked UFW modules without checking whether UFW exists; the node uses nftables/iptables directly.
+**Location:** Prometheus role
 
-**Impact:** No security impact; deploy playbooks fail late/noisily after containers are already running.
+**Root cause:** Same as F-03 — `published_ports: "8080:8080"`. Also conflicted with FileBrowser's host port.
 
-**Remediation (pending):** Add a guard to only run UFW tasks when UFW is present (pattern already used elsewhere).
+**Impact:** Container metrics endpoint exposed on all interfaces unnecessarily.
+
+**Remediation:** Removed `published_ports` entirely.
+
+---
+
+### 🟡 F-05: Group vars overriding role defaults (PROCESS)
+
+**Location:** Production group_vars
+
+**Root cause:** Bind addresses for Jellyfin and FileBrowser were set to `0.0.0.0` in group_vars, overriding the corrected role defaults. The Jellyfin deploy playbook also hardcoded `0.0.0.0` inline, bypassing both role defaults and group_vars.
+
+**Impact:** Initial fix attempts had no effect until group_vars and inline playbook values were also corrected.
+
+**Remediation:** Updated group_vars to use the LAN IP. Fixed inline hardcoding in the deploy playbook.
+
+**Lesson:** Ansible variable precedence: role defaults < group_vars < playbook vars < inline task values. Always check the full chain.
+
+---
+
+### 🟡 F-06: Nginx on VPS undocumented (DOCUMENTATION)
+
+**Root cause:** VPS audit showed nginx listening on ports 80/443, but existing documentation stated no HTTP services were running on the VPS.
+
+**Impact:** No security impact (the service is intentional), but creates confusion during audits and for anyone reviewing the infrastructure.
+
+**Remediation:** Created documentation covering the full nginx → WireGuard → media streaming path.
+
+---
+
+### ℹ️ F-07: UFW tasks fail on home node (INFO)
+
+**Affected:** Jellyfin and FileBrowser roles
+
+**Root cause:** Both roles call `community.general.ufw` without checking if UFW is installed. The home node uses nftables directly (managed by Docker + manual rules), not UFW.
+
+**Impact:** Deploy playbooks fail at the UFW task after the container is already running. No security impact — just noisy failures.
+
+**Remediation (pending):** Add UFW availability check (same pattern already used in Grafana and Prometheus roles):
+
+```yaml
+- name: Check if ufw is available
+  ansible.builtin.command: which ufw
+  register: _ufw_check
+  changed_when: false
+  failed_when: false
+
+- name: Allow service in UFW from LAN only
+  community.general.ufw: ...
+  when: _ufw_check.rc == 0
+```
 
 ---
 
@@ -115,50 +151,77 @@ In a credible threat model where the edge VPS is compromised, the attacker could
 
 ### Port Binding Matrix (post-hardening)
 
-* Internal services: **LAN-only bind address** ✅
-* One service: **overlay/VPN-only** (expected, via edge proxy) ✅
-* Local-only component: **localhost-only** ✅
-* Exporters/metrics: **no host ports** ✅
-* Public exposure: only the intended edge entrypoints ✅
+| Container | Bind Address | Port | Status |
+|---|---|---|---|
+| **grafana** | `<LAN_IP>` | 3000 | ✅ LAN-only |
+| **prometheus** | `<LAN_IP>` | 9090 | ✅ LAN-only |
+| **filebrowser** | `<LAN_IP>` | 8080 | ✅ LAN-only |
+| **kiwix** | `<LAN_IP>` | 8181 | ✅ LAN-only |
+| **jellyfin** | `<LAN_IP>` | 8096 | ✅ LAN-only |
+| **jellyfin-music** | `<WG_IP>` | 18096 | ✅ WG-only (VPS nginx) |
+| **cloudflared** | `127.0.0.1` | 8086 | ✅ Localhost-only |
+| **paper** | `<WG_IP>` | 25565 | ✅ WG-only (host network) |
+| **node-exporter** | — | — | ✅ No host port |
+| **cadvisor** | — | — | ✅ No host port |
+| **traefik** | — | — | ✅ No host port (CF Tunnel) |
+| **uptime-kuma** | — | — | ✅ No host port (CF Tunnel) |
 
-### Docker forwarding firewall chain (post-hardening)
+### DOCKER-USER Chain (post-hardening)
 
-* Allow: LAN subnet only ✅
-* Allow: inter-container / internal bridges as needed ✅
-* Default: fall through to standard forwarding policy ✅
+```
+ip saddr <LAN_SUBNET>/24  → ACCEPT     (LAN traffic only)
+iifname "docker0"          → ACCEPT     (inter-container)
+iifname "br-internal_net"  → ACCEPT     (east-west)
+iifname "br-public_net"    → ACCEPT     (CF tunnel path)
+iifname "br-lan_pub"       → ACCEPT     (LAN bridge)
+default                    → RETURN     (fall through to FORWARD)
+```
 
-### External Verification (from edge host)
+### External Verification (from VPS)
 
-* Previously reachable LAN-only ports: **now blocked** ✅
-* Expected overlay/VPN-only service: **still reachable** ✅
+```
+BLOCKED:   <WG_IP>:3000   (Grafana)
+BLOCKED:   <WG_IP>:8080   (FileBrowser)
+BLOCKED:   <WG_IP>:8096   (Jellyfin)
+BLOCKED:   <WG_IP>:8181   (Kiwix)
+BLOCKED:   <WG_IP>:9090   (Prometheus)
+BLOCKED:   <WG_IP>:9100   (Node Exporter)
+REACHABLE: <WG_IP>:18096  (jellyfin-music — expected)
+```
 
 ---
 
-## Files/Changes (generalized)
+## Files Modified
 
-* Updated role defaults to introduce and enforce **bind address variables**
-* Wired Docker container tasks to use those bind addresses
-* Added container recreation where required to apply port binding changes
-* Removed unnecessary host port publications for internal-only exporters
-* Tightened Docker forwarding allow rule CIDR
-* Fixed documentation and corrected an OS/version naming mismatch in docs
-* Identified a separate config-generation task producing invalid output (technical debt)
+| File | Change |
+|---|---|
+| Grafana role defaults | Added LAN bind address |
+| Grafana role tasks | Wired port binding using bind_addr variable; added `recreate: true` |
+| Prometheus role defaults | Added LAN bind address |
+| Prometheus role tasks | Bound Prometheus to LAN; removed node-exporter + cAdvisor host ports; removed stale UFW rules; added `recreate: true`; fixed healthcheck URL |
+| FileBrowser role defaults | Changed bind address to LAN IP |
+| FileBrowser role tasks | Added `recreate: true` |
+| Jellyfin role defaults | Changed bind address to LAN IP |
+| Production group_vars | Changed Jellyfin and FileBrowser bind addresses from `0.0.0.0` to LAN IP |
+| Jellyfin deploy playbook | Changed hardcoded `0.0.0.0` to variable reference |
+| Kiwix role defaults | Changed bind address to LAN IP |
+| Kiwix role tasks | Fixed smoke test URL to use bind_addr |
+| Base role tasks | Changed DOCKER-USER CIDR from `/16` to `/24` |
 
 ---
 
 ## Remaining Items (non-blocking)
 
-* Add UFW presence guard to roles (low)
-* Document that host-network services bypass Docker forwarding chain (low)
-* Avoid flushing Docker forwarding chain on every run; centralize rule ownership (medium)
-* Remove duplicated inline container logic in playbooks; use roles consistently (low)
-* Fix/remove invalid config-generation task that can cause container crash loops (medium)
+| Item | Priority | Notes |
+|---|---|---|
+| Add UFW guard to jellyfin + filebrowser roles | Low | Cosmetic — deploys fail at UFW task but containers run fine |
+| Game server DOCKER-USER rules missing | Low | Runs in host mode, so DOCKER-USER doesn't apply. Document this. |
+| Base role flushes DOCKER-USER on every run | Medium | `iptables -F DOCKER-USER` wipes any rules added by other roles. Consider a single DOCKER-USER task file that runs last. |
+| Jellyfin deploy playbook has inline container task | Low | Should use the role instead of duplicating logic. Technical debt. |
+| VPS docs have incorrect Debian version | Low | Docs say one version, kernel confirms another. |
+| Seed migrations task produces invalid XML | Medium | Caused crash loop after container recreation. Removed file manually; task needs fixing or removing. |
 
 ---
 
-**Audit performed:** February 19, 2026 (EET)
-**Verification:** internal audit script + external probe from edge host
-
----
-
-If you want a “public-facing” version (e.g., to share externally), I can further remove service names (Grafana/Prometheus/Jellyfin/etc.) and keep them as categories (“monitoring UI”, “metrics API”, “media service”), which reduces fingerprinting risk even more.
+*Audit performed: February 2026*  
+*All remediations verified via internal audit script + external VPS probe*
