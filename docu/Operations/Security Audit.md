@@ -210,18 +210,5 @@ REACHABLE: <WG_IP>:18096  (jellyfin-music — expected)
 
 ---
 
-## Remaining Items (non-blocking)
-
-| Item | Priority | Notes |
-|---|---|---|
-| Add UFW guard to jellyfin + filebrowser roles | Low | Cosmetic — deploys fail at UFW task but containers run fine |
-| Game server DOCKER-USER rules missing | Low | Runs in host mode, so DOCKER-USER doesn't apply. Document this. |
-| Base role flushes DOCKER-USER on every run | Medium | `iptables -F DOCKER-USER` wipes any rules added by other roles. Consider a single DOCKER-USER task file that runs last. |
-| Jellyfin deploy playbook has inline container task | Low | Should use the role instead of duplicating logic. Technical debt. |
-| VPS docs have incorrect Debian version | Low | Docs say one version, kernel confirms another. |
-| Seed migrations task produces invalid XML | Medium | Caused crash loop after container recreation. Removed file manually; task needs fixing or removing. |
-
----
-
 *Audit performed: February 2026*  
 *All remediations verified via internal audit script + external VPS probe*
