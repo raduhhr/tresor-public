@@ -242,7 +242,6 @@ A `backup-all.yml` infra playbook runs backups across all services sequentially.
 
 Fully deployed and continuously monitored.  
 All components provisioned through Ansible, containerized under Docker, and secured via Cloudflare Tunnel + WireGuard.  
-System uptime >99.9% since deployment.
 
 **status-all playbook output**  
 > Paper (MC server) is the only unhealthy service because it's so locked down not even Docker's health probe can reach it.
