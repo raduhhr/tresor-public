@@ -242,9 +242,9 @@ Fully deployed and continuously monitored.
 All components provisioned through Ansible, containerized under Docker, and secured via Cloudflare Tunnel + WireGuard.  
 
 **status-all playbook output**  
-> Paper (MC server) is the only unhealthy service because it's so locked down not even Docker's health probe can reach it.
 
-<img width="694" alt="status-all output" src="https://github.com/user-attachments/assets/3963ff02-ae2f-408f-adc9-622f4fe04b00" />
+<img width="429" height="1308" alt="image" src="https://github.com/user-attachments/assets/e387d558-f2b6-4d3c-bae6-c1ea86d53550" />
+
 
 ---
 
