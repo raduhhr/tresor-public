@@ -1,12 +1,11 @@
 # Tresor – Self-Hosted, Modular, Secure Homelab
 
-Tresor is a fully self-hosted, modular, and automated homelab infrastructure built for personal use, DevOps development, and as the foundation for a bachelor's thesis.  
+Tresor is a fully self-hosted, modular, and automated homelab infrastructure built for personal use and DevOps development.
 It features complete Docker network separation, a dedicated Hetzner VPS edge node, WireGuard tunneling, and a local KVM sandbox.  
+
 Everything from provisioning to deployment is handled entirely through Ansible (22 roles, 120+ playbooks), with full LAN monitoring via Grafana and Prometheus.  
 Designed around security, extensibility, and minimal manual maintenance.
 
-> This is the sanitized, fully reproducible public mirror of my self-hosted homelab.  
-> All credentials, IPs, and domains have been replaced or encrypted via Ansible Vault.
 
 ---
 
