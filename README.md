@@ -70,6 +70,13 @@ Velocity MC Proxy-----------------------------------------|
   music.raduhhr.xyz → VPS nginx → WireGuard → Jellyfin Music (10.66.66.2:18096)
 </pre>
 
+## tresor-ctl
+
+A Python cli control panel that auto-discovers services from the `playbooks/` directory structure.  
+Provides a terminal dashboard for running lifecycle actions (deploy, start, stop, restart, status, backup, update, remove etc) against any service without memorizing playbook paths again.
+<img width="1083" height="1355" alt="image" src="https://github.com/user-attachments/assets/434d41a1-8cf3-43b1-97b0-343eb611d751" />
+
+
 ## Core Services
 
 | Service | Description | Exposed? | Network | Access |
@@ -189,11 +196,6 @@ Automated via Ansible playbooks with a consistent pattern across all stateful se
 
 A `backup-all.yml` infra playbook runs backups across all services sequentially.
 
-## tresor-ctl
-
-A Python cli control panel that auto-discovers services from the `playbooks/` directory structure.  
-Provides a terminal dashboard for running lifecycle actions (deploy, start, stop, restart, status, backup, update, remove etc) against any service without memorizing playbook paths again.
-<img width="1844" height="2218" alt="image" src="https://github.com/user-attachments/assets/d93985a2-f114-42dc-a9ec-ec5f79822eb0" />
 
 ## Users & Access
 - `radu` / `mainuser`: primary account, no root login
