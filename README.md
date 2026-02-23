@@ -32,6 +32,57 @@ Three hosts, three environments:
 
 ---
 
+## Ansible Automation
+
+22 roles and 120+ playbooks with consistent conventions across every service.
+
+**Playbook lifecycle per service:** `deploy` · `remove` · `backup` · `start` · `stop` · `restart` · `status` · `update`
+
+**Key conventions:**
+- Config dirs on SSD: `/mnt/ssd/configs/<service>/`
+- Backup dirs: `/mnt/data/files/Backups/<service>/`
+- Backup naming: `<service>-backup-DDMMYYYY-HHMM.tar.gz` with 30-day automatic pruning
+- Version pinning: centralized in `group_vars/prod/versions.yml` via `tresor_versions` dict — never hardcoded in roles
+- Secrets: Ansible Vault with per-environment identity labels (prod, qa, vps) — zero tokens in Git
+- Variable hierarchy: `ansible.cfg` → `group_vars/all` → `group_vars/{prod,qa,vps}` → `host_vars` → role defaults
+
+```
+roles/
+├── base/                  # System hardening, users, SSH, Fail2Ban, UFW, sysctl, unattended-upgrades
+├── docker/                # Docker CE install + daemon config
+├── networks/              # All 5 Docker networks
+├── wireguard-client/      # WG client on tresor (10.66.66.2)
+├── wireguard-server/      # WG server on VPS (10.66.66.1)
+├── motd/                  # Dynamic SSH welcome banner
+├── traefik/               # Reverse proxy + TLS + rate-limiting middleware
+├── cloudflared/           # Cloudflare Tunnel
+├── grafana/               # Monitoring dashboard
+├── prometheus/            # Metrics (+ node-exporter, cAdvisor)
+├── jellyfin/              # Media server (movies, shows, photos)
+├── jellyfin-music/        # Music-only instance (WG-bound :18096)
+├── filebrowser/           # Personal file management UI
+├── filebrowser-public/    # Friends 1TB file drop (WG-bound :8082)
+├── uptime-kuma/           # MC status page
+├── kiwix/                 # Offline Wikipedia
+├── paper/                 # Minecraft server
+├── velocity/              # MC proxy (VPS, systemd)
+├── nginx-music/           # Reverse proxy for music + cloud subdomains (VPS)
+├── content-notifier/      # Discord alerts for new Jellyfin media
+├── bday-notifier/         # Birthday bot (cron + Discord)
+└── steam-free-notifier/   # Steam free game alerts (cron + Discord)
+```
+## tresor-ctl
+
+A Python TUI control panel that auto-discovers services from the `playbooks/` directory structure.  
+Provides a terminal dashboard for running lifecycle actions (deploy, start, stop, restart, status, backup, update, remove, etc.) against any service without memorizing playbook paths.
+
+Built with Rich + Questionary + Paramiko for live SSH interaction.
+
+<img width="1148" height="1312" alt="image" src="https://github.com/user-attachments/assets/c393777b-5330-4b8e-b4f7-0ae98c615661" />
+
+
+---
+
 ## Networking Architecture
 
 Five isolated Docker networks enforce strict traffic boundaries:
@@ -76,36 +127,25 @@ Five isolated Docker networks enforce strict traffic boundaries:
 
 ---
 
-## tresor-ctl
-
-A Python TUI control panel that auto-discovers services from the `playbooks/` directory structure.  
-Provides a terminal dashboard for running lifecycle actions (deploy, start, stop, restart, status, backup, update, remove, etc.) against any service without memorizing playbook paths.
-
-Built with Rich + Questionary + Paramiko for live SSH interaction.
-
-<img width="1083" alt="tresor-ctl dashboard" src="https://github.com/user-attachments/assets/434d41a1-8cf3-43b1-97b0-343eb611d751" />
-
----
-
 ## Services
 
 ### Docker Containers (tresor — prod)
 
 | Service | Description | Exposed? | Network | Access |
 |---------|-------------|----------|---------|--------|
-| **Traefik** | Reverse proxy for all web services | ✅ | `public_net` | Via Cloudflare Tunnel |
-| **Cloudflared** | Secure Cloudflare Tunnel ingress | ✅ | `public_net` | — |
-| **Uptime Kuma** | Public MC status page | ✅ | `public_net` | mc-status.raduhhr.xyz |
-| **PaperMC** | Minecraft server (offline-mode, whitelist) | ✅ | `mc_net` / `mc_pub` | VPS Velocity → WG |
-| **Jellyfin Music** | Music-only Jellyfin instance | ✅ | `internal_net` | music.raduhhr.xyz (VPS nginx → WG) |
-| **FileBrowser Public** | 1 TB file drop for friends | ✅ | `public_net` | cloud.raduhhr.xyz (VPS nginx → WG) |
-| **Grafana** | Monitoring dashboard | ❌ | `internal_net` | LAN :3000 |
-| **Prometheus** | Metrics collector | ❌ | `internal_net` | LAN :9090 |
-| **Node Exporter** | Host-level metrics | ❌ | `internal_net` | Pulled by Prometheus |
-| **cAdvisor** | Docker container metrics | ❌ | `internal_net` | Pulled by Prometheus |
-| **Jellyfin** | Media server (movies, shows, photos) | ❌ | `internal_net` | LAN :8096 |
-| **FileBrowser** | Personal file management UI | ❌ | `internal_net` | LAN :8080 |
-| **Kiwix** | Offline Wikipedia (110 GB ZIM) | ❌ | `internal_net` / `lan_pub` | LAN :8181 |
+| **Traefik** | Reverse proxy for all web services | Yes | `public_net` | Via Cloudflare Tunnel |
+| **Cloudflared** | Secure Cloudflare Tunnel ingress | Yes | `public_net` | — |
+| **Uptime Kuma** | Public MC status page | Yes | `public_net` | mc-status.raduhhr.xyz |
+| **PaperMC** | Minecraft server (offline-mode, whitelist) | Yes | `mc_net` / `mc_pub` | VPS Velocity → WG |
+| **Jellyfin Music** | Music-only Jellyfin instance | Yes | `internal_net` | music.raduhhr.xyz (VPS nginx → WG) |
+| **FileBrowser Public** | 1 TB file drop for friends | Yes | `public_net` | cloud.raduhhr.xyz (VPS nginx → WG) |
+| **Grafana** | Monitoring dashboard | No | `internal_net` | LAN :3000 |
+| **Prometheus** | Metrics collector | No | `internal_net` | LAN :9090 |
+| **Node Exporter** | Host-level metrics | No | `internal_net` | Pulled by Prometheus |
+| **cAdvisor** | Docker container metrics | No | `internal_net` | Pulled by Prometheus |
+| **Jellyfin** | Media server (movies, shows, photos) | No | `internal_net` | LAN :8096 |
+| **FileBrowser** | Personal file management UI | No | `internal_net` | LAN :8080 |
+| **Kiwix** | Offline Wikipedia (110 GB ZIM) | No | `internal_net` / `lan_pub` | LAN :8181 |
 
 ### Cron & Notification Bots (tresor — prod)
 
@@ -149,48 +189,6 @@ Data flows one way: metrics are pulled internally; there are no WAN-bound pushes
 
 **FileBrowser tree**  
 <img width="2549" alt="FileBrowser tree" src="https://github.com/user-attachments/assets/6826927f-c7e9-4102-83bb-834e35503d75" />
-
----
-
-## Ansible Automation
-
-22 roles and 120+ playbooks with consistent conventions across every service.
-
-**Playbook lifecycle per service:** `deploy` · `remove` · `backup` · `start` · `stop` · `restart` · `status` · `update`
-
-**Key conventions:**
-- Config dirs on SSD: `/mnt/ssd/configs/<service>/`
-- Backup dirs: `/mnt/data/files/Backups/<service>/`
-- Backup naming: `<service>-backup-DDMMYYYY-HHMM.tar.gz` with 30-day automatic pruning
-- Version pinning: centralized in `group_vars/prod/versions.yml` via `tresor_versions` dict — never hardcoded in roles
-- Secrets: Ansible Vault with per-environment identity labels (prod, qa, vps) — zero tokens in Git
-- Variable hierarchy: `ansible.cfg` → `group_vars/all` → `group_vars/{prod,qa,vps}` → `host_vars` → role defaults
-
-```
-roles/
-├── base/                  # System hardening, users, SSH, Fail2Ban, UFW, sysctl, unattended-upgrades
-├── docker/                # Docker CE install + daemon config
-├── networks/              # All 5 Docker networks
-├── wireguard-client/      # WG client on tresor (10.66.66.2)
-├── wireguard-server/      # WG server on VPS (10.66.66.1)
-├── motd/                  # Dynamic SSH welcome banner
-├── traefik/               # Reverse proxy + TLS + rate-limiting middleware
-├── cloudflared/           # Cloudflare Tunnel
-├── grafana/               # Monitoring dashboard
-├── prometheus/            # Metrics (+ node-exporter, cAdvisor)
-├── jellyfin/              # Media server (movies, shows, photos)
-├── jellyfin-music/        # Music-only instance (WG-bound :18096)
-├── filebrowser/           # Personal file management UI
-├── filebrowser-public/    # Friends 1TB file drop (WG-bound :8082)
-├── uptime-kuma/           # MC status page
-├── kiwix/                 # Offline Wikipedia
-├── paper/                 # Minecraft server
-├── velocity/              # MC proxy (VPS, systemd)
-├── nginx-music/           # Reverse proxy for music + cloud subdomains (VPS)
-├── content-notifier/      # Discord alerts for new Jellyfin media
-├── bday-notifier/         # Birthday bot (cron + Discord)
-└── steam-free-notifier/   # Steam free game alerts (cron + Discord)
-```
 
 ---
 
