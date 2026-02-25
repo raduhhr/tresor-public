@@ -1,4 +1,4 @@
-# Tresor – Self-Hosted, Modular, Secure Homelab
+# Tresor: Self-hosted homelab infrastructure: Docker, Ansible (22 roles, 120+ playbooks), WireGuard, Cloudflare Tunnel, Prometheus/Grafana
 
 Tresor is a fully self-hosted, modular, and automated homelab infrastructure built for personal use and DevOps development.
 It features complete Docker network separation, a dedicated Hetzner VPS edge node, WireGuard tunneling, and a local KVM sandbox.  
