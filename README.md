@@ -1,9 +1,9 @@
-# Tresor: Self-hosted homelab infrastructure: Docker, Ansible (22 roles, 120+ playbooks), WireGuard, Cloudflare Tunnel, Prometheus/Grafana
+# Tresor: Self-hosted homelab infrastructure: Docker, Ansible (22 roles, 135+ playbooks), WireGuard, Cloudflare Tunnel, Prometheus/Grafana
 
 Tresor is a fully self-hosted, modular, and automated homelab infrastructure built for personal use and DevOps development.
 It features complete Docker network separation, a dedicated Hetzner VPS edge node, WireGuard tunneling, and a local KVM sandbox.  
 
-Everything from provisioning to deployment is handled entirely through Ansible (22 roles, 120+ playbooks), with full LAN monitoring via Grafana and Prometheus.  
+Everything from provisioning to deployment is handled entirely through Ansible (22 roles, 135+ playbooks), with full LAN monitoring via Grafana and Prometheus.  
 Designed around security, extensibility, and minimal manual maintenance.
 
 
@@ -33,9 +33,9 @@ Three hosts, three environments:
 
 ## Ansible Automation
 
-22 roles and 120+ playbooks with consistent conventions across every service.
+22 roles and 135+ playbooks with consistent conventions across every service.
 
-**Playbook lifecycle per service:** `deploy` · `remove` · `backup` · `start` · `stop` · `restart` · `status` · `update`
+**Playbook lifecycle per service:** `deploy` · `remove` · `backup` · `restore` · `backup-test` · `start` · `stop` · `restart` · `status` · `update`
 
 **Key conventions:**
 - Config dirs on SSD: `/mnt/ssd/configs/<service>/`
@@ -208,15 +208,21 @@ Data flows one way: metrics are pulled internally; there are no WAN-bound pushes
 
 ## Backup Strategy
 
-Automated via Ansible playbooks with a consistent pattern across all stateful services:
+Automated via Ansible playbooks with a consistent pattern across all stateful services.
 
-1. Stop container
+**Backup cycle:**
+
+1. Stop container (ensures data consistency)
 2. Archive config directory → `tar.gz` with timestamped filename
 3. Start container
 4. Log operation with ISO 8601 timestamp to `/var/log/<service>-backup.log`
 5. Prune backups older than 30 days
 
 A `backup-all.yml` infra playbook runs backups across all services sequentially.
+
+**Restore playbooks** for every service follow a safe sequence: validate tarball → pre-restore safety snapshot → stop & remove container → wipe data directory → extract backup → fix ownership → redeploy via role. Each restore supports auto-picking the latest backup or targeting a specific snapshot via `-e backup_file=`.
+
+**Backup verification** via `backup-test.yml` playbooks for critical stateful services (Paper, Grafana, Prometheus, Uptime Kuma, Jellyfin, Jellyfin Music). Each test runs the full lifecycle — fresh backup → fingerprint data (DB hashes, file counts) → destroy → restore → redeploy → compare fingerprints — proving backup integrity end-to-end.
 
 ---
 
