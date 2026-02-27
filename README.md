@@ -88,32 +88,30 @@ Five isolated Docker networks enforce strict traffic boundaries:
 
 | Network | Purpose | Services |
 |---------|---------|----------|
-| `public_net` | Internet-facing via Cloudflare Tunnel + Traefik | Traefik, Cloudflared, Uptime Kuma |
-| `internal_net` | LAN-only east–west traffic | Grafana, Prometheus, Jellyfin, FileBrowser, Kiwix |
+| `public_net` | Internet-facing via Cloudflare Tunnel + Traefik | Traefik, Cloudflared, Uptime Kuma, FileBrowser Public |
+| `internal_net` | LAN-only east–west traffic | Grafana, Prometheus, Jellyfin, Jellyfin Music, FileBrowser, Kiwix |
 | `mc_net` | Isolated Minecraft backend | PaperMC |
 | `mc_pub` | WireGuard bridge (VPS ↔ MC backend) | PaperMC egress |
-| `lan_pub` | LAN broadcast bridge | Internal services visible locally |
+| `lan_pub` | LAN broadcast bridge | FileBrowser, Kiwix |
 
 ```
          _____________________ Internet
-         |                       │                                  lan_pub (LAN bridge)
-         |             Cloudflare Tunnel (443)                      ────────────────────
-         |                       │                                          │
-         |                    Traefik (HTTP)                       internal_net (LAN-only)
-         |                       │                                 ───────────────────────
+         |                       │
+         |             Cloudflare Tunnel (443)
+         |                       │
+         |                    Traefik (HTTP)                       internal_net (LAN-only, 192.168.0.42)
+         |                       │                                 ─────────────────────────────────────
          |                  public_net                              • Jellyfin        :8096
-         |               (exposed via CF)                           • Jellyfin Music  :18096 (WG)
-         |              ─────────────────                           • FileBrowser     :8080
-         |              • Uptime Kuma                               • FileBrowser Pub :8082 (WG)
-         |                                                          • Grafana         :3000
-         |                                                          • Prometheus      :9090
+         |               (exposed via CF)                           • FileBrowser     :8080
+         |              ─────────────────                           • Grafana         :3000
+         |              • Uptime Kuma                               • Prometheus      :9090
          |                                                          • Kiwix           :8181
          |
-  Hetzner VPS (WireGuard Server)
-  ──────────────────────────────
-  • nginx: music.raduhhr.xyz  → WG → Jellyfin Music (:18096)
-  • nginx: cloud.raduhhr.xyz  → WG → FileBrowser Pub (:8082)
-  • Velocity MC proxy (:25565) → WG → PaperMC
+  Hetzner VPS (WireGuard Server, 10.66.66.1)
+  ──────────────────────────────────────────
+  • nginx: music.raduhhr.xyz (:443)  → WG → Jellyfin Music  (10.66.66.2:18096)
+  • nginx: cloud.raduhhr.xyz (:443)  → WG → FileBrowser Pub (10.66.66.2:8082)
+  • Velocity MC proxy      (:25565)  → WG → PaperMC         (10.66.66.2:25565)
          |
          |                                        mc_pub (WireGuard bridge)
   Velocity MC Proxy ─────────────────────────────────────────────────|
@@ -136,14 +134,14 @@ Five isolated Docker networks enforce strict traffic boundaries:
 | **Cloudflared** | Secure Cloudflare Tunnel ingress | Yes | `public_net` | — |
 | **Uptime Kuma** | Public MC status page | Yes | `public_net` | mc-status.raduhhr.xyz |
 | **PaperMC** | Minecraft server (offline-mode, whitelist) | Yes | `mc_net` / `mc_pub` | VPS Velocity → WG |
-| **Jellyfin Music** | Music-only Jellyfin instance | Yes | `internal_net` | music.raduhhr.xyz (VPS nginx → WG) |
-| **FileBrowser Public** | 1 TB file drop for friends | Yes | `public_net` | cloud.raduhhr.xyz (VPS nginx → WG) |
+| **Jellyfin Music** | Music-only Jellyfin instance | Yes | `internal_net` | music.raduhhr.xyz (VPS nginx → WG :18096) |
+| **FileBrowser Public** | 1 TB file drop for friends | Yes | `public_net` | cloud.raduhhr.xyz (VPS nginx → WG :8082) |
 | **Grafana** | Monitoring dashboard | No | `internal_net` | LAN :3000 |
 | **Prometheus** | Metrics collector | No | `internal_net` | LAN :9090 |
 | **Node Exporter** | Host-level metrics | No | `internal_net` | Pulled by Prometheus |
 | **cAdvisor** | Docker container metrics | No | `internal_net` | Pulled by Prometheus |
 | **Jellyfin** | Media server (movies, shows, photos) | No | `internal_net` | LAN :8096 |
-| **FileBrowser** | Personal file management UI | No | `internal_net` | LAN :8080 |
+| **FileBrowser** | Personal file management UI | No | `internal_net` / `lan_pub` | LAN :8080 |
 | **Kiwix** | Offline Wikipedia (110 GB ZIM) | No | `internal_net` / `lan_pub` | LAN :8181 |
 
 ### Cron & Notification Bots (tresor — prod)
